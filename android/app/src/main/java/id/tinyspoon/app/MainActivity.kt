@@ -1,7 +1,6 @@
 package id.tinyspoon.app
 
 import android.os.Bundle
-import android.window.SplashScreen
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -11,10 +10,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,6 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Text
+import id.tinyspoon.app.ui.screens.onboarding.OnboardingScreen
+import id.tinyspoon.app.ui.theme.OrangePrimary
 import id.tinyspoon.app.ui.theme.TinySpoonTheme
 import kotlinx.coroutines.delay
 
@@ -31,18 +35,39 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TinySpoonTheme {
-                SplashScreen()
+                AppNavigation()
             }
         }
     }
 }
 
+enum class Screen {
+    SPLASH, ONBOARDING
+}
+
 @Composable
-fun SplashScreen() {
-    val brandColor = Color(0xFF1B3A6B)
+fun AppNavigation() {
+    var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
+
+    when (currentScreen) {
+        Screen.SPLASH -> SplashScreen(
+            onFinished = { currentScreen = Screen.ONBOARDING }
+        )
+        Screen.ONBOARDING -> OnboardingScreen(
+            onFinish = {
+                // nanti navigasi ke Home
+            }
+        )
+    }
+}
+
+@Composable
+fun SplashScreen(onFinished: () -> Unit) {
+    val brandColor = Color(0xFFFF6B35)
 
     LaunchedEffect(Unit) {
         delay(2000)
+        onFinished()
     }
 
     Column(
@@ -53,7 +78,7 @@ fun SplashScreen() {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "\uD83E\uDD44",
+            text = "🥄",
             fontSize = 80.sp
         )
 
