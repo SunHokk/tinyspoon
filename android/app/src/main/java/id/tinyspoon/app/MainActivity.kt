@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import id.tinyspoon.app.ui.screens.onboarding.OnboardingScreen
 import id.tinyspoon.app.ui.theme.OrangePrimary
 import id.tinyspoon.app.ui.theme.TinySpoonTheme
+import id.tinyspoon.app.ui.screens.auth.AuthScreen
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -42,7 +43,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING
+    SPLASH, ONBOARDING, AUTH
 }
 
 @Composable
@@ -54,8 +55,10 @@ fun AppNavigation() {
             onFinished = { currentScreen = Screen.ONBOARDING }
         )
         Screen.ONBOARDING -> OnboardingScreen(
-            onFinish = {
-                // nanti navigasi ke Home
+            onFinish = { currentScreen = Screen.AUTH }
+        )
+        Screen.AUTH -> AuthScreen(
+            onAuthSuccess = {
             }
         )
     }
