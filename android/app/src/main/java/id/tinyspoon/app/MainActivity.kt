@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun SplashScreen() {
-    val brandColor = Color(0xFF1B3A6B)
+    val brandColor = Color(0xFFFF6B35)
 
     LaunchedEffect(Unit) {
         delay(2000)
