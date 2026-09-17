@@ -1,7 +1,6 @@
 package id.tinyspoon.app
 
 import android.os.Bundle
-import android.window.SplashScreen
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -11,10 +10,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,7 +23,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Text
+import id.tinyspoon.app.ui.screens.onboarding.OnboardingScreen
 import id.tinyspoon.app.ui.theme.TinySpoonTheme
+import id.tinyspoon.app.ui.screens.auth.AuthScreen
+import id.tinyspoon.app.ui.screens.home.HomeScreen
+import id.tinyspoon.app.ui.screens.product.ProductDetailScreen
+import id.tinyspoon.app.ui.screens.home.Product
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -31,18 +38,56 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TinySpoonTheme {
-                SplashScreen()
+                AppNavigation()
             }
         }
     }
 }
 
+enum class Screen {
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL
+}
+
 @Composable
-fun SplashScreen() {
-    val brandColor = Color(0xFF1B3A6B)
+fun AppNavigation() {
+    var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
+    var selectedProduct by remember { mutableStateOf<Product?>(null) }
+
+    when (currentScreen) {
+        Screen.SPLASH -> SplashScreen(
+            onFinished = { currentScreen = Screen.ONBOARDING }
+        )
+        Screen.ONBOARDING -> OnboardingScreen(
+            onFinish = { currentScreen = Screen.AUTH }
+        )
+        Screen.AUTH -> AuthScreen(
+            onAuthSuccess = {currentScreen = Screen.HOME}
+        )
+        Screen.HOME -> HomeScreen(
+            onProductClick = { product ->
+                selectedProduct = product
+                currentScreen = Screen.PRODUCT_DETAIL
+            }
+        )
+        Screen.PRODUCT_DETAIL -> selectedProduct?.let { product ->
+            ProductDetailScreen(
+                product = product,
+                onBack = { currentScreen = Screen.HOME },
+                onAddToCart = {
+                    currentScreen = Screen.HOME
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun SplashScreen(onFinished: () -> Unit) {
+    val brandColor = Color(0xFFFF6B35)
 
     LaunchedEffect(Unit) {
         delay(2000)
+        onFinished()
     }
 
     Column(
@@ -53,7 +98,7 @@ fun SplashScreen() {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "\uD83E\uDD44",
+            text = "🥄",
             fontSize = 80.sp
         )
 
