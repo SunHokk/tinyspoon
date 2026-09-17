@@ -28,6 +28,8 @@ import id.tinyspoon.app.ui.screens.onboarding.OnboardingScreen
 import id.tinyspoon.app.ui.theme.TinySpoonTheme
 import id.tinyspoon.app.ui.screens.auth.AuthScreen
 import id.tinyspoon.app.ui.screens.home.HomeScreen
+import id.tinyspoon.app.ui.screens.product.ProductDetailScreen
+import id.tinyspoon.app.ui.screens.home.Product
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -43,12 +45,13 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL
 }
 
 @Composable
 fun AppNavigation() {
     var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
+    var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
     when (currentScreen) {
         Screen.SPLASH -> SplashScreen(
@@ -62,8 +65,19 @@ fun AppNavigation() {
         )
         Screen.HOME -> HomeScreen(
             onProductClick = { product ->
+                selectedProduct = product
+                currentScreen = Screen.PRODUCT_DETAIL
             }
         )
+        Screen.PRODUCT_DETAIL -> selectedProduct?.let { product ->
+            ProductDetailScreen(
+                product = product,
+                onBack = { currentScreen = Screen.HOME },
+                onAddToCart = {
+                    currentScreen = Screen.HOME
+                }
+            )
+        }
     }
 }
 
