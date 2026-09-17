@@ -30,6 +30,8 @@ import id.tinyspoon.app.ui.screens.auth.AuthScreen
 import id.tinyspoon.app.ui.screens.home.HomeScreen
 import id.tinyspoon.app.ui.screens.product.ProductDetailScreen
 import id.tinyspoon.app.ui.screens.home.Product
+import id.tinyspoon.app.ui.screens.cart.CartItem
+import id.tinyspoon.app.ui.screens.cart.CartScreen
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -45,13 +47,14 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART
 }
 
 @Composable
 fun AppNavigation() {
     var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
+    var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
 
     when (currentScreen) {
         Screen.SPLASH -> SplashScreen(
@@ -74,10 +77,35 @@ fun AppNavigation() {
                 product = product,
                 onBack = { currentScreen = Screen.HOME },
                 onAddToCart = {
-                    currentScreen = Screen.HOME
+                    val existingItem = cartItems.find { it.product.id == product.id }
+                    cartItems = if (existingItem != null) {
+                        cartItems.map {
+                            if (it.product.id == product.id) it.copy(quantity = it.quantity + 1)
+                            else it
+                        }
+                    } else {
+                        cartItems + CartItem(product, 1)
+                    }
+                    currentScreen = Screen.CART
                 }
             )
         }
+        Screen.CART -> CartScreen(
+            cartItems = cartItems,
+            onBack = { currentScreen = Screen.HOME },
+            onRemoveItem = { item ->
+                cartItems = cartItems - item
+            },
+            onQuantityChange = { item, newQty ->
+                cartItems = cartItems.map {
+                    if (it.product.id == item.product.id) it.copy(quantity = newQty)
+                    else it
+                }
+            },
+            onCheckout = {
+                currentScreen = Screen.HOME
+            }
+        )
     }
 }
 
