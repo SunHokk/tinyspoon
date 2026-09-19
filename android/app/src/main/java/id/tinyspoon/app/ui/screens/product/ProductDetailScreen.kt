@@ -25,7 +25,8 @@ import id.tinyspoon.app.ui.theme.*
 fun ProductDetailScreen(
     product: Product,
     onBack: () -> Unit,
-    onAddToCart: () -> Unit
+    onAddToCart: () -> Unit,
+    onSellerClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -197,12 +198,15 @@ fun ProductDetailScreen(
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { onSellerClick() }
+                        ) {
                             Text(text = "✅", fontSize = 12.sp)
                             Text(
-                                text = " Seller Tersertifikasi",
+                                text = " Seller Tersertifikasi • Lihat Sertifikat ➡",
                                 fontSize = 12.sp,
-                                color = TextSecondary
+                                color = OrangePrimary,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }

@@ -30,6 +30,10 @@ import id.tinyspoon.app.ui.screens.auth.AuthScreen
 import id.tinyspoon.app.ui.screens.home.HomeScreen
 import id.tinyspoon.app.ui.screens.product.ProductDetailScreen
 import id.tinyspoon.app.ui.screens.home.Product
+import id.tinyspoon.app.ui.screens.cart.CartItem
+import id.tinyspoon.app.ui.screens.cart.CartScreen
+import id.tinyspoon.app.ui.screens.order.CheckoutScreen
+import id.tinyspoon.app.ui.screens.product.SellerCertificateScreen
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -45,37 +49,85 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE
 }
 
 @Composable
 fun AppNavigation() {
     var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
+    var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
 
     when (currentScreen) {
         Screen.SPLASH -> SplashScreen(
             onFinished = { currentScreen = Screen.ONBOARDING }
         )
+
         Screen.ONBOARDING -> OnboardingScreen(
             onFinish = { currentScreen = Screen.AUTH }
         )
+
         Screen.AUTH -> AuthScreen(
-            onAuthSuccess = {currentScreen = Screen.HOME}
+            onAuthSuccess = { currentScreen = Screen.HOME }
         )
+
         Screen.HOME -> HomeScreen(
             onProductClick = { product ->
                 selectedProduct = product
                 currentScreen = Screen.PRODUCT_DETAIL
             }
         )
+
         Screen.PRODUCT_DETAIL -> selectedProduct?.let { product ->
             ProductDetailScreen(
                 product = product,
                 onBack = { currentScreen = Screen.HOME },
                 onAddToCart = {
-                    currentScreen = Screen.HOME
+                    val existingItem = cartItems.find { it.product.id == product.id }
+                    cartItems = if (existingItem != null) {
+                        cartItems.map {
+                            if (it.product.id == product.id) it.copy(quantity = it.quantity + 1)
+                            else it
+                        }
+                    } else {
+                        cartItems + CartItem(product, 1)
+                    }
+                    currentScreen = Screen.CART
+                },
+                onSellerClick = { currentScreen = Screen.SELLER_CERTIFICATE }
+            )
+        }
+
+        Screen.CART -> CartScreen(
+            cartItems = cartItems,
+            onBack = { currentScreen = Screen.HOME },
+            onRemoveItem = { item ->
+                cartItems = cartItems - item
+            },
+            onQuantityChange = { item, newQty ->
+                cartItems = cartItems.map {
+                    if (it.product.id == item.product.id) it.copy(quantity = newQty)
+                    else it
                 }
+            },
+            onCheckout = {
+                currentScreen = Screen.CHECKOUT
+            }
+        )
+
+        Screen.CHECKOUT -> CheckoutScreen(
+            cartItems = cartItems,
+            onBack = { currentScreen = Screen.CART },
+            onOrderSuccess = {
+                cartItems = emptyList()
+                currentScreen = Screen.HOME
+            }
+        )
+
+        Screen.SELLER_CERTIFICATE -> selectedProduct?.let { product ->
+            SellerCertificateScreen(
+                sellerName = product.sellerName,
+                onBack = { currentScreen = Screen.PRODUCT_DETAIL }
             )
         }
     }
