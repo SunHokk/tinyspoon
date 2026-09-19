@@ -32,6 +32,7 @@ import id.tinyspoon.app.ui.screens.product.ProductDetailScreen
 import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.screens.cart.CartItem
 import id.tinyspoon.app.ui.screens.cart.CartScreen
+import id.tinyspoon.app.ui.screens.order.CheckoutScreen
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -47,7 +48,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT
 }
 
 @Composable
@@ -60,18 +61,22 @@ fun AppNavigation() {
         Screen.SPLASH -> SplashScreen(
             onFinished = { currentScreen = Screen.ONBOARDING }
         )
+
         Screen.ONBOARDING -> OnboardingScreen(
             onFinish = { currentScreen = Screen.AUTH }
         )
+
         Screen.AUTH -> AuthScreen(
-            onAuthSuccess = {currentScreen = Screen.HOME}
+            onAuthSuccess = { currentScreen = Screen.HOME }
         )
+
         Screen.HOME -> HomeScreen(
             onProductClick = { product ->
                 selectedProduct = product
                 currentScreen = Screen.PRODUCT_DETAIL
             }
         )
+
         Screen.PRODUCT_DETAIL -> selectedProduct?.let { product ->
             ProductDetailScreen(
                 product = product,
@@ -90,6 +95,7 @@ fun AppNavigation() {
                 }
             )
         }
+
         Screen.CART -> CartScreen(
             cartItems = cartItems,
             onBack = { currentScreen = Screen.HOME },
@@ -103,6 +109,15 @@ fun AppNavigation() {
                 }
             },
             onCheckout = {
+                currentScreen = Screen.CHECKOUT
+            }
+        )
+
+        Screen.CHECKOUT -> CheckoutScreen(
+            cartItems = cartItems,
+            onBack = { currentScreen = Screen.CART },
+            onOrderSuccess = {
+                cartItems = emptyList()
                 currentScreen = Screen.HOME
             }
         )
