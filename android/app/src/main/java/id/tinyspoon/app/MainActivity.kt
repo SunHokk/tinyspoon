@@ -33,6 +33,7 @@ import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.screens.cart.CartItem
 import id.tinyspoon.app.ui.screens.cart.CartScreen
 import id.tinyspoon.app.ui.screens.order.CheckoutScreen
+import id.tinyspoon.app.ui.screens.product.SellerCertificateScreen
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -48,7 +49,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE
 }
 
 @Composable
@@ -92,7 +93,8 @@ fun AppNavigation() {
                         cartItems + CartItem(product, 1)
                     }
                     currentScreen = Screen.CART
-                }
+                },
+                onSellerClick = { currentScreen = Screen.SELLER_CERTIFICATE }
             )
         }
 
@@ -121,6 +123,13 @@ fun AppNavigation() {
                 currentScreen = Screen.HOME
             }
         )
+
+        Screen.SELLER_CERTIFICATE -> selectedProduct?.let { product ->
+            SellerCertificateScreen(
+                sellerName = product.sellerName,
+                onBack = { currentScreen = Screen.PRODUCT_DETAIL }
+            )
+        }
     }
 }
 
