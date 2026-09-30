@@ -46,7 +46,8 @@ val ageCategories = listOf("Semua", "6-8 bulan", "9-11 bulan", "12+ bulan")
 
 @Composable
 fun HomeScreen(
-    onProductClick: (Product) -> Unit
+    onProductClick: (Product) -> Unit,
+    onProfileClick: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Semua") }
@@ -72,17 +73,35 @@ fun HomeScreen(
                     .padding(top = 24.dp)
             ) {
                 Column {
-                    Text(
-                        text = "📍 Jakarta Selatan",
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.8f)
-                    )
-                    Text(
-                        text = "Halo, Bunda! 👋",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "📍 Jakarta Selatan",
+                                fontSize = 12.sp,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                            Text(
+                                text = "Halo, Bunda! 👋",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                                .clickable { onProfileClick() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = "👤", fontSize = 20.sp)
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(12.dp))
 
                     OutlinedTextField(
