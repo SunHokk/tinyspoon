@@ -33,6 +33,8 @@ import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.screens.cart.CartItem
 import id.tinyspoon.app.ui.screens.cart.CartScreen
 import id.tinyspoon.app.ui.screens.order.CheckoutScreen
+import id.tinyspoon.app.ui.screens.order.OrderTrackingScreen
+import id.tinyspoon.app.ui.screens.profile.ProfileScreen
 import id.tinyspoon.app.ui.screens.product.SellerCertificateScreen
 import kotlinx.coroutines.delay
 
@@ -49,7 +51,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE
 }
 
 @Composable
@@ -75,7 +77,13 @@ fun AppNavigation() {
             onProductClick = { product ->
                 selectedProduct = product
                 currentScreen = Screen.PRODUCT_DETAIL
-            }
+            },
+            onProfileClick = { currentScreen = Screen.PROFILE}
+        )
+
+        Screen.PROFILE -> ProfileScreen(
+            onBack = { currentScreen = Screen.HOME },
+            onLogout = { currentScreen = Screen.AUTH }
         )
 
         Screen.PRODUCT_DETAIL -> selectedProduct?.let { product ->
@@ -120,8 +128,12 @@ fun AppNavigation() {
             onBack = { currentScreen = Screen.CART },
             onOrderSuccess = {
                 cartItems = emptyList()
-                currentScreen = Screen.HOME
+                currentScreen = Screen.ORDER_TRACKING
             }
+        )
+
+        Screen.ORDER_TRACKING -> OrderTrackingScreen(
+            onBack = { currentScreen = Screen.HOME }
         )
 
         Screen.SELLER_CERTIFICATE -> selectedProduct?.let { product ->
@@ -134,7 +146,8 @@ fun AppNavigation() {
 }
 
 @Composable
-fun SplashScreen(onFinished: () -> Unit) {
+fun SplashScreen(
+    onFinished: () -> Unit) {
     val brandColor = Color(0xFFFF6B35)
 
     LaunchedEffect(Unit) {
