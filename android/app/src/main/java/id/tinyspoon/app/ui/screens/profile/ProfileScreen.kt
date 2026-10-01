@@ -24,7 +24,8 @@ import id.tinyspoon.app.ui.theme.*
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onOrderHistoryClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -140,7 +141,7 @@ fun ProfileScreen(
                         icon = Icons.Default.ShoppingCart,
                         title = "Riwayat Pesanan",
                         subtitle = "Lihat semua pesanan kamu",
-                        onClick = {}
+                        onClick = onOrderHistoryClick
                     )
                     HorizontalDivider(color = BorderOrange)
                     ProfileMenuItem(

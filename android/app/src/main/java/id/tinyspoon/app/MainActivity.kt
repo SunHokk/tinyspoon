@@ -35,6 +35,7 @@ import id.tinyspoon.app.ui.screens.cart.CartScreen
 import id.tinyspoon.app.ui.screens.order.CheckoutScreen
 import id.tinyspoon.app.ui.screens.order.OrderTrackingScreen
 import id.tinyspoon.app.ui.screens.profile.ProfileScreen
+import id.tinyspoon.app.ui.screens.order.OrderHistoryScreen
 import id.tinyspoon.app.ui.screens.product.SellerCertificateScreen
 import kotlinx.coroutines.delay
 
@@ -51,7 +52,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY
 }
 
 @Composable
@@ -83,7 +84,8 @@ fun AppNavigation() {
 
         Screen.PROFILE -> ProfileScreen(
             onBack = { currentScreen = Screen.HOME },
-            onLogout = { currentScreen = Screen.AUTH }
+            onLogout = { currentScreen = Screen.AUTH },
+            onOrderHistoryClick = { currentScreen = Screen.ORDER_HISTORY }
         )
 
         Screen.PRODUCT_DETAIL -> selectedProduct?.let { product ->
@@ -134,6 +136,11 @@ fun AppNavigation() {
 
         Screen.ORDER_TRACKING -> OrderTrackingScreen(
             onBack = { currentScreen = Screen.HOME }
+        )
+
+        Screen.ORDER_HISTORY -> OrderHistoryScreen(
+            onBack = { currentScreen = Screen.PROFILE },
+            onTrackOrder = { currentScreen = Screen.ORDER_TRACKING }
         )
 
         Screen.SELLER_CERTIFICATE -> selectedProduct?.let { product ->
