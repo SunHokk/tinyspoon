@@ -24,7 +24,9 @@ import id.tinyspoon.app.ui.theme.*
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onOrderHistoryClick: () -> Unit,
+    onSellerDashboardClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -140,7 +142,7 @@ fun ProfileScreen(
                         icon = Icons.Default.ShoppingCart,
                         title = "Riwayat Pesanan",
                         subtitle = "Lihat semua pesanan kamu",
-                        onClick = {}
+                        onClick = onOrderHistoryClick
                     )
                     HorizontalDivider(color = BorderOrange)
                     ProfileMenuItem(
@@ -185,6 +187,22 @@ fun ProfileScreen(
                         title = "Beri Rating",
                         subtitle = "Bantu kami berkembang",
                         onClick = {}
+                    )
+                }
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    ProfileMenuItem(
+                        icon = Icons.Default.ShoppingCart,
+                        title = "Dashboard Seller",
+                        subtitle = "Kelola toko dan produkmu",
+                        onClick = onSellerDashboardClick
                     )
                 }
             }

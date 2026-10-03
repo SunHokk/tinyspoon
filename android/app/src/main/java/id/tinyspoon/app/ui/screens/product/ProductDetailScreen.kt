@@ -26,7 +26,8 @@ fun ProductDetailScreen(
     product: Product,
     onBack: () -> Unit,
     onAddToCart: () -> Unit,
-    onSellerClick: () -> Unit
+    onSellerClick: () -> Unit,
+    onReviewClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -104,18 +105,28 @@ fun ProductDetailScreen(
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    repeat(5) { index ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        repeat(5) { index ->
+                            Text(
+                                text = if (index < product.rating.toInt()) "⭐" else "☆",
+                                fontSize = 16.sp
+                            )
+                        }
                         Text(
-                            text = if (index < product.rating.toInt()) "⭐" else "☆",
-                            fontSize = 16.sp
+                            text = "${product.rating} / 5.0",
+                            fontSize = 14.sp,
+                            color = TextSecondary
                         )
                     }
                     Text(
-                        text = "${product.rating} / 5.0",
-                        fontSize = 14.sp,
-                        color = TextSecondary
+                        text = "Lihat Semua →",
+                        fontSize = 13.sp,
+                        color = OrangePrimary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { onReviewClick() }
                     )
                 }
 

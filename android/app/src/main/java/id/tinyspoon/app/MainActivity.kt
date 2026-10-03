@@ -35,7 +35,10 @@ import id.tinyspoon.app.ui.screens.cart.CartScreen
 import id.tinyspoon.app.ui.screens.order.CheckoutScreen
 import id.tinyspoon.app.ui.screens.order.OrderTrackingScreen
 import id.tinyspoon.app.ui.screens.profile.ProfileScreen
+import id.tinyspoon.app.ui.screens.order.OrderHistoryScreen
 import id.tinyspoon.app.ui.screens.product.SellerCertificateScreen
+import id.tinyspoon.app.ui.screens.product.ReviewScreen
+import id.tinyspoon.app.ui.screens.seller.SellerDashboardScreen
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -51,7 +54,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD
 }
 
 @Composable
@@ -83,7 +86,9 @@ fun AppNavigation() {
 
         Screen.PROFILE -> ProfileScreen(
             onBack = { currentScreen = Screen.HOME },
-            onLogout = { currentScreen = Screen.AUTH }
+            onLogout = { currentScreen = Screen.AUTH },
+            onOrderHistoryClick = { currentScreen = Screen.ORDER_HISTORY },
+            onSellerDashboardClick = {currentScreen = Screen.SELLER_DASHBOARD}
         )
 
         Screen.PRODUCT_DETAIL -> selectedProduct?.let { product ->
@@ -102,7 +107,8 @@ fun AppNavigation() {
                     }
                     currentScreen = Screen.CART
                 },
-                onSellerClick = { currentScreen = Screen.SELLER_CERTIFICATE }
+                onSellerClick = { currentScreen = Screen.SELLER_CERTIFICATE },
+                onReviewClick = { currentScreen = Screen.REVIEW }
             )
         }
 
@@ -136,12 +142,32 @@ fun AppNavigation() {
             onBack = { currentScreen = Screen.HOME }
         )
 
+        Screen.ORDER_HISTORY -> OrderHistoryScreen(
+            onBack = { currentScreen = Screen.PROFILE },
+            onTrackOrder = { currentScreen = Screen.ORDER_TRACKING }
+        )
+
+        Screen.REVIEW -> selectedProduct?.let { product ->
+            ReviewScreen(
+                productName = product.name,
+                onBack = { currentScreen = Screen.PRODUCT_DETAIL },
+                onSubmitReview = { currentScreen = Screen.PRODUCT_DETAIL }
+            )
+        }
+
         Screen.SELLER_CERTIFICATE -> selectedProduct?.let { product ->
             SellerCertificateScreen(
                 sellerName = product.sellerName,
                 onBack = { currentScreen = Screen.PRODUCT_DETAIL }
             )
         }
+
+        Screen.SELLER_DASHBOARD -> SellerDashboardScreen(
+            onBack = { currentScreen = Screen.PROFILE },
+            onManageProducts = { },
+            onManageOrders = { },
+            onSellerProfile = { }
+        )
     }
 }
 
