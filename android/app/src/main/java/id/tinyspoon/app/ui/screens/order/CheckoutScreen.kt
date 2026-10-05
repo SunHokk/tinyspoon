@@ -148,12 +148,7 @@ fun CheckoutScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     isError = addressError != null,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = OrangePrimary,
-                        focusedLabelColor = OrangePrimary,
-                        cursorColor = OrangePrimary,
-                        errorBorderColor = Color.Red
-                    ),
+                    colors = tinySpoonFieldColors(),
                     minLines = 3
                 )
                 if (addressError != null) {
@@ -172,10 +167,7 @@ fun CheckoutScreen(
                     placeholder = { Text("Catatan tambahan (opsional)...", fontSize = 14.sp) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = OrangePrimary,
-                        cursorColor = OrangePrimary
-                    ),
+                    colors = tinySpoonFieldColors(),
                     minLines = 2
                 )
             }
