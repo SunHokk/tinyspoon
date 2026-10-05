@@ -338,13 +338,7 @@ fun TinySpoonTextField(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             isError = errorMessage != null,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = OrangePrimary,
-                focusedLabelColor = OrangePrimary,
-                cursorColor = OrangePrimary,
-                errorBorderColor = Color.Red,
-                errorLabelColor = Color.Red
-            ),
+            colors = tinySpoonFieldColors(),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             visualTransformation = if (isPassword && !passwordVisible)
                 PasswordVisualTransformation() else VisualTransformation.None,
