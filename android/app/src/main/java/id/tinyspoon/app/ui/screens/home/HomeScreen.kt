@@ -1,12 +1,12 @@
 package id.tinyspoon.app.ui.screens.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,21 +29,24 @@ data class Product(
     val ageGroup: String,
     val texture: String,
     val rating: Float,
-    val imageEmoji: String
+    val imageEmoji: String,
+    val allergens: List<String> = emptyList()
 )
 
 val dummyProducts = listOf(
-    Product("1", "Bubur Ayam Sayuran", 25000, "Dapur Bunda", "6-8 bulan", "Halus", 4.8f, "🍚"),
-    Product("2", "Puree Wortel Kentang", 20000, "MPASI Sehat", "6-8 bulan", "Halus", 4.6f, "🥕"),
-    Product("3", "Tim Ikan Salmon", 35000, "Nutrisi Bayi", "9-11 bulan", "Lembut", 4.9f, "🐟"),
-    Product("4", "Nasi Lembek Ayam", 28000, "Dapur Bunda", "9-11 bulan", "Lembut", 4.7f, "🍗"),
-    Product("5", "Bubur Kacang Hijau", 18000, "MPASI Sehat", "6-8 bulan", "Halus", 4.5f, "🌱"),
-    Product("6", "Sup Sayuran Mix", 22000, "Nutrisi Bayi", "12+ bulan", "Kasar", 4.8f, "🥦"),
-    Product("7", "Nasi Tim Hati Ayam", 30000, "Dapur Bunda", "9-11 bulan", "Lembut", 4.7f, "🍱"),
-    Product("8", "Puree Labu Kuning", 19000, "MPASI Sehat", "6-8 bulan", "Halus", 4.6f, "🎃"),
+    Product("1", "Bubur Ayam Sayuran", 25000, "Dapur Bunda", "6-8 bulan", "Halus", 4.8f, "🍚", emptyList()),
+    Product("2", "Puree Wortel Kentang", 20000, "MPASI Sehat", "6-8 bulan", "Halus", 4.6f, "🥕", listOf("Susu")),
+    Product("3", "Tim Ikan Salmon", 35000, "Nutrisi Bayi", "9-11 bulan", "Lembut", 4.9f, "🐟", listOf("Seafood")),
+    Product("4", "Nasi Lembek Ayam", 28000, "Dapur Bunda", "9-11 bulan", "Lembut", 4.7f, "🍗", listOf("Telur")),
+    Product("5", "Bubur Kacang Hijau", 18000, "MPASI Sehat", "6-8 bulan", "Halus", 4.5f, "🌱", listOf("Kacang")),
+    Product("6", "Sup Sayuran Mix", 22000, "Nutrisi Bayi", "12+ bulan", "Kasar", 4.8f, "🥦", listOf("Gluten")),
+    Product("7", "Nasi Tim Hati Ayam", 30000, "Dapur Bunda", "9-11 bulan", "Lembut", 4.7f, "🍱", listOf("Telur")),
+    Product("8", "Puree Labu Kuning", 19000, "MPASI Sehat", "6-8 bulan", "Halus", 4.6f, "🎃", listOf("Susu")),
 )
 
 val ageCategories = listOf("Semua", "6-8 bulan", "9-11 bulan", "12+ bulan")
+val textureCategories = listOf("Semua", "Halus", "Lembut", "Kasar")
+val allergenOptions = listOf("Susu", "Telur", "Kacang", "Gluten", "Seafood")
 
 @Composable
 fun HomeScreen(
@@ -51,12 +55,26 @@ fun HomeScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Semua") }
+    var selectedTexture by remember { mutableStateOf("Semua") }
+    var excludedAllergens by remember { mutableStateOf(setOf<String>()) }
+
+    val isFilterActive = selectedCategory != "Semua" ||
+            selectedTexture != "Semua" ||
+            excludedAllergens.isNotEmpty()
+
+    fun resetFilters() {
+        selectedCategory = "Semua"
+        selectedTexture = "Semua"
+        excludedAllergens = emptySet()
+    }
 
     val filteredProducts = dummyProducts.filter { product ->
         val matchSearch = product.name.contains(searchQuery, ignoreCase = true) ||
                 product.sellerName.contains(searchQuery, ignoreCase = true)
         val matchCategory = selectedCategory == "Semua" || product.ageGroup == selectedCategory
-        matchSearch && matchCategory
+        val matchTexture = selectedTexture == "Semua" || product.texture == selectedTexture
+        val matchAllergen = excludedAllergens.none { it in product.allergens }
+        matchSearch && matchCategory && matchTexture && matchAllergen
     }
 
     LazyColumn(
@@ -111,10 +129,13 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
                             unfocusedContainerColor = Color.White,
                             focusedContainerColor = Color.White,
                             unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = Color.Transparent
+                            focusedBorderColor = Color.Transparent,
+                            cursorColor = OrangePrimary
                         ),
                         singleLine = true
                     )
@@ -159,12 +180,30 @@ fun HomeScreen(
 
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text(
-                    text = "Kategori Usia",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Kategori Usia",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    if (isFilterActive) {
+                        Text(
+                            text = "Reset",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = OrangePrimary,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { resetFilters() }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(ageCategories) { category ->
@@ -175,13 +214,61 @@ fun HomeScreen(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Tekstur",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(textureCategories) { texture ->
+                        CategoryChip(
+                            text = texture,
+                            isSelected = selectedTexture == texture,
+                            onClick = { selectedTexture = texture }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Bebas Alergen",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(allergenOptions) { allergen ->
+                        val isSelected = allergen in excludedAllergens
+                        CategoryChip(
+                            text = "Tanpa $allergen",
+                            isSelected = isSelected,
+                            onClick = {
+                                excludedAllergens = if (isSelected) {
+                                    excludedAllergens - allergen
+                                } else {
+                                    excludedAllergens + allergen
+                                }
+                            }
+                        )
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
 
         item {
             Text(
-                text = "Produk Terdekat",
+                text = if (isFilterActive || searchQuery.isNotBlank())
+                    "Hasil (${filteredProducts.size})"
+                else
+                    "Produk Terdekat",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary,
@@ -190,11 +277,22 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        items(filteredProducts) { product ->
-            ProductCard(
-                product = product,
-                onClick = { onProductClick(product) }
-            )
+        if (filteredProducts.isEmpty()) {
+            item {
+                EmptyResult(
+                    onReset = {
+                        resetFilters()
+                        searchQuery = ""
+                    }
+                )
+            }
+        } else {
+            items(filteredProducts, key = { it.id }) { product ->
+                ProductCard(
+                    product = product,
+                    onClick = { onProductClick(product) }
+                )
+            }
         }
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -220,8 +318,49 @@ fun CategoryChip(
             text = text,
             fontSize = 13.sp,
             color = if (isSelected) Color.White else TextSecondary,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            fontWeight = FontWeight.SemiBold
         )
+    }
+}
+
+@Composable
+fun EmptyResult(onReset: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "🔍", fontSize = 48.sp)
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Produk tidak ditemukan",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Coba ubah filter atau kata kunci pencarian",
+            fontSize = 13.sp,
+            color = TextSecondary,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .border(1.dp, OrangePrimary, RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { onReset() }
+                .padding(horizontal = 24.dp, vertical = 10.dp)
+        ) {
+            Text(
+                text = "Hapus Semua Filter",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = OrangePrimary
+            )
+        }
     }
 }
 
