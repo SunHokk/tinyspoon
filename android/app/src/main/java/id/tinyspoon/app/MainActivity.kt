@@ -106,6 +106,7 @@ fun AppNavigation() {
     var trackingBackTo by remember { mutableStateOf(Screen.HOME) }
     var favoriteIds by remember { mutableStateOf(setOf<String>()) }
     var detailBackTo by remember { mutableStateOf(Screen.HOME) }
+    var cartBackTo by remember { mutableStateOf(Screen.HOME) }
     val context = LocalContext.current
     val favoriteProducts = products.filter { it.id in favoriteIds }
 
@@ -176,6 +177,7 @@ fun AppNavigation() {
                     } else {
                         cartItems + CartItem(product, 1)
                     }
+                    cartBackTo = Screen.PRODUCT_DETAIL
                     currentScreen = Screen.CART
                 },
                 onSellerClick = { currentScreen = Screen.SELLER_CERTIFICATE },
@@ -185,7 +187,8 @@ fun AppNavigation() {
 
         Screen.CART -> CartScreen(
             cartItems = cartItems,
-            onBack = { currentScreen = Screen.HOME },
+            onBack = { currentScreen = cartBackTo },
+            onBrowseProducts = { currentScreen = Screen.HOME },
             onRemoveItem = { item ->
                 cartItems = cartItems - item
             },
@@ -237,6 +240,7 @@ fun AppNavigation() {
                 val (updatedCart, skipped) = reorderItems(itemLines, products, cartItems)
                 if (skipped < itemLines.size) {
                     cartItems = updatedCart
+                    cartBackTo = Screen.ORDER_HISTORY
                     currentScreen = Screen.CART
                 }
                 if (skipped > 0) {
