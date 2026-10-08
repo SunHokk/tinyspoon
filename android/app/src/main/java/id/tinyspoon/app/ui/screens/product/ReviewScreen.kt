@@ -18,9 +18,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.theme.*
+import java.util.Locale
+import kotlin.math.roundToInt
 
 data class Review(
+    val id: String,
+    val productId: String,
     val userName: String,
     val rating: Int,
     val comment: String,
@@ -28,26 +33,50 @@ data class Review(
     val babyAge: String
 )
 
-val dummyReviews = listOf(
-    Review("Bunda Sari", 5, "MPASI-nya enak banget! Anak saya langsung suka dan habis 1 porsi. Teksturnya juga pas untuk usia 7 bulan.", "20 Sep 2024", "7 bulan"),
-    Review("Mama Rara", 5, "Bahan-bahannya segar dan bergizi. Packaging juga rapi dan higienis. Recommended banget!", "18 Sep 2024", "8 bulan"),
-    Review("Ibu Dewi", 4, "Rasanya enak dan anak saya suka. Tapi pengirimannya agak lama, semoga bisa lebih cepat.", "15 Sep 2024", "6 bulan"),
-    Review("Bunda Tika", 5, "Udah berlangganan 3 bulan, selalu puas! Nutrisinya lengkap dan anak jadi lebih sehat.", "10 Sep 2024", "9 bulan"),
-    Review("Mama Cici", 4, "Produknya bagus dan terpercaya karena ada sertifikat BPOM-nya. Harga juga wajar.", "5 Sep 2024", "7 bulan"),
+private val sampleReviews = listOf(
+    Review("", "", "Bunda Sari", 5, "MPASI-nya enak banget! Anak saya langsung suka dan habis 1 porsi. Teksturnya juga pas untuk usia 7 bulan.", "20 Sep 2024", "7 bulan"),
+    Review("", "", "Mama Rara", 5, "Bahan-bahannya segar dan bergizi. Packaging juga rapi dan higienis. Recommended banget!", "18 Sep 2024", "8 bulan"),
+    Review("", "", "Ibu Dewi", 4, "Rasanya enak dan anak saya suka. Tapi pengirimannya agak lama, semoga bisa lebih cepat.", "15 Sep 2024", "6 bulan"),
+    Review("", "", "Bunda Tika", 5, "Udah berlangganan 3 bulan, selalu puas! Nutrisinya lengkap dan anak jadi lebih sehat.", "10 Sep 2024", "9 bulan"),
+    Review("", "", "Mama Cici", 4, "Produknya bagus dan terpercaya karena ada sertifikat BPOM-nya. Harga juga wajar.", "5 Sep 2024", "7 bulan"),
 )
+
+fun seedReviewsFor(products: List<Product>): List<Review> =
+    products.flatMap { product ->
+        val fives = ((product.rating - 4f) * sampleReviews.size).roundToInt()
+            .coerceIn(0, sampleReviews.size)
+        sampleReviews.mapIndexed { index, sample ->
+            sample.copy(
+                id = "seed-${product.id}-$index",
+                productId = product.id,
+                rating = if (index < fives) 5 else 4
+            )
+        }
+    }
+
+fun List<Review>.averageRating(): Float =
+    if (isEmpty()) 0f else sumOf { it.rating }.toFloat() / size
+
+fun withRatingsFrom(products: List<Product>, reviews: List<Review>): List<Product> =
+    products.map { product ->
+        val own = reviews.filter { it.productId == product.id }
+        if (own.isEmpty()) product
+        else product.copy(rating = (own.averageRating() * 10).roundToInt() / 10f)
+    }
 
 @Composable
 fun ReviewScreen(
     productName: String,
+    reviews: List<Review>,
     onBack: () -> Unit,
-    onSubmitReview: () -> Unit
+    onSubmitReview: (rating: Int, comment: String) -> Unit
 ) {
     var showReviewForm by remember { mutableStateOf(false) }
     var userRating by remember { mutableStateOf(0) }
     var userComment by remember { mutableStateOf("") }
-    var commentError by remember { mutableStateOf<String?>(null) }
+    var formError by remember { mutableStateOf<String?>(null) }
 
-    val averageRating = dummyReviews.map { it.rating }.average()
+    val averageRating = reviews.averageRating()
 
     Column(
         modifier = Modifier
@@ -107,11 +136,13 @@ fun ReviewScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = String.format("%.1f", averageRating),
+                            text = String.format(Locale.US, "%.1f", averageRating),
                             fontSize = 48.sp,
                             fontWeight = FontWeight.Bold,
                             color = OrangePrimary
@@ -125,7 +156,7 @@ fun ReviewScreen(
                             }
                         }
                         Text(
-                            text = "${dummyReviews.size} ulasan",
+                            text = "${reviews.size} ulasan",
                             fontSize = 14.sp,
                             color = TextSecondary
                         )
@@ -177,7 +208,10 @@ fun ReviewScreen(
                                     Text(
                                         text = if (index < userRating) "⭐" else "☆",
                                         fontSize = 32.sp,
-                                        modifier = Modifier.clickable { userRating = index + 1 }
+                                        modifier = Modifier.clickable {
+                                            userRating = index + 1
+                                            formError = null
+                                        }
                                     )
                                 }
                             }
@@ -186,18 +220,18 @@ fun ReviewScreen(
                                 value = userComment,
                                 onValueChange = {
                                     userComment = it
-                                    commentError = null
+                                    formError = null
                                 },
                                 label = { Text("Ceritakan pengalamanmu...") },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
-                                isError = commentError != null,
+                                isError = formError != null,
                                 colors = tinySpoonFieldColors(),
                                 minLines = 3
                             )
-                            if (commentError != null) {
+                            if (formError != null) {
                                 Text(
-                                    text = commentError!!,
+                                    text = formError!!,
                                     color = Color.Red,
                                     fontSize = 12.sp
                                 )
@@ -206,11 +240,13 @@ fun ReviewScreen(
                             Button(
                                 onClick = {
                                     when {
-                                        userRating == 0 -> commentError = "Pilih rating dulu!"
-                                        userComment.isBlank() -> commentError = "Tulis ulasan dulu!"
+                                        userRating == 0 -> formError = "Pilih rating dulu!"
+                                        userComment.isBlank() -> formError = "Tulis ulasan dulu!"
                                         else -> {
+                                            onSubmitReview(userRating, userComment.trim())
                                             showReviewForm = false
-                                            onSubmitReview()
+                                            userRating = 0
+                                            userComment = ""
                                         }
                                     }
                                 },
@@ -229,17 +265,44 @@ fun ReviewScreen(
                 }
             }
 
-            item {
-                Text(
-                    text = "Semua Ulasan",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-            }
+            if (reviews.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp, horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "💬", fontSize = 48.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Belum ada ulasan",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Jadilah yang pertama menulis ulasan untuk produk ini",
+                            fontSize = 13.sp,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                item {
+                    Text(
+                        text = "Semua Ulasan",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                }
 
-            items(dummyReviews) { review ->
-                ReviewCard(review = review)
+                items(reviews, key = { it.id }) { review ->
+                    ReviewCard(review = review)
+                }
             }
         }
     }
@@ -283,11 +346,13 @@ fun ReviewCard(review: Review) {
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
-                        Text(
-                            text = "Bayi ${review.babyAge}",
-                            fontSize = 11.sp,
-                            color = TextSecondary
-                        )
+                        if (review.babyAge.isNotBlank()) {
+                            Text(
+                                text = "Bayi ${review.babyAge}",
+                                fontSize = 11.sp,
+                                color = TextSecondary
+                            )
+                        }
                     }
                 }
                 Text(

@@ -49,9 +49,15 @@ import id.tinyspoon.app.ui.screens.seller.dummySellerOrders
 import id.tinyspoon.app.ui.screens.order.DELIVERY_FEE_PER_SELLER
 import id.tinyspoon.app.ui.screens.seller.OrderStatus
 import id.tinyspoon.app.ui.screens.seller.SellerOrder
+import id.tinyspoon.app.ui.screens.order.dummyOrderHistory
+import id.tinyspoon.app.ui.screens.product.Review
+import id.tinyspoon.app.ui.screens.product.seedReviewsFor
+import id.tinyspoon.app.ui.screens.product.withRatingsFrom
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+import java.util.UUID
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -87,7 +93,9 @@ fun AppNavigation() {
     var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
-    var products by remember { mutableStateOf(dummyProducts) }
+    val seedReviews = remember { seedReviewsFor(dummyProducts) }
+    var reviews by remember { mutableStateOf(seedReviews) }
+    var products by remember { mutableStateOf(withRatingsFrom(dummyProducts, seedReviews)) }
     var sellerOrders by remember { mutableStateOf(dummySellerOrders) }
     val buyerName = "Gilbert"
     val currentSellerName = "Dapur Bunda"
@@ -117,10 +125,12 @@ fun AppNavigation() {
         )
 
         Screen.PROFILE -> ProfileScreen(
+            orderCount = sellerOrders.count { it.customerName == buyerName } + dummyOrderHistory.size,
+            reviewCount = reviews.count { it.userName == buyerName },
             onBack = { currentScreen = Screen.HOME },
             onLogout = { currentScreen = Screen.AUTH },
             onOrderHistoryClick = { currentScreen = Screen.ORDER_HISTORY },
-            onSellerDashboardClick = {currentScreen = Screen.SELLER_DASHBOARD}
+            onSellerDashboardClick = { currentScreen = Screen.SELLER_DASHBOARD }
         )
 
         Screen.PRODUCT_DETAIL -> selectedProduct?.let { product ->
@@ -199,8 +209,26 @@ fun AppNavigation() {
         Screen.REVIEW -> selectedProduct?.let { product ->
             ReviewScreen(
                 productName = product.name,
+                reviews = reviews.filter { it.productId == product.id },
                 onBack = { currentScreen = Screen.PRODUCT_DETAIL },
-                onSubmitReview = { currentScreen = Screen.PRODUCT_DETAIL }
+                onSubmitReview = { rating, comment ->
+                    val newReview = Review(
+                        id = UUID.randomUUID().toString(),
+                        productId = product.id,
+                        userName = buyerName,
+                        rating = rating,
+                        comment = comment,
+                        date = todayLabel("d MMM yyyy"),
+                        babyAge = ""
+                    )
+                    val updatedReviews = listOf(newReview) + reviews.filterNot {
+                        it.productId == product.id && it.userName == buyerName
+                    }
+                    val updatedProducts = withRatingsFrom(products, updatedReviews)
+                    reviews = updatedReviews
+                    products = updatedProducts
+                    selectedProduct = updatedProducts.find { it.id == product.id } ?: product
+                }
             )
         }
 
@@ -273,6 +301,9 @@ private fun createOrdersFromCart(
             )
         }
 }
+
+private fun todayLabel(pattern: String): String =
+    LocalDate.now().format(DateTimeFormatter.ofPattern(pattern, Locale("id", "ID")))
 
 @Composable
 fun SplashScreen(

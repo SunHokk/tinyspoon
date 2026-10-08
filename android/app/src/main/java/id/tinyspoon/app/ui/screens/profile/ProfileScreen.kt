@@ -23,6 +23,9 @@ import id.tinyspoon.app.ui.theme.*
 
 @Composable
 fun ProfileScreen(
+    orderCount: Int,
+    reviewCount: Int,
+    favoriteCount: Int = 0,
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onOrderHistoryClick: () -> Unit,
@@ -124,9 +127,9 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        ProfileStat(value = "12", label = "Pesanan")
-                        ProfileStat(value = "3", label = "Favorit")
-                        ProfileStat(value = "4.9⭐", label = "Rating")
+                        ProfileStat(value = "$orderCount", label = "Pesanan")
+                        ProfileStat(value = "$favoriteCount", label = "Favorit")
+                        ProfileStat(value = "$reviewCount", label = "Ulasan")
                     }
                 }
             }
