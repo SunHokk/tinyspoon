@@ -53,6 +53,7 @@ fun ProductDetailScreen(
 
                 Box(
                     modifier = Modifier
+                        .statusBarsPadding()
                         .padding(16.dp)
                         .size(40.dp)
                         .background(

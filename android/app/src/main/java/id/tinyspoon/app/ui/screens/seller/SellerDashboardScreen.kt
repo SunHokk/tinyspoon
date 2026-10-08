@@ -224,7 +224,7 @@ fun SellerDashboardScreen(
                                 color = Color(0xFF2E7D32)
                             )
                             Text(
-                                text = "Berlaku hingga 31 Desember 2025",
+                                text = "Berlaku hingga 31 Desember 2027",
                                 fontSize = 12.sp,
                                 color = Color(0xFF388E3C)
                             )

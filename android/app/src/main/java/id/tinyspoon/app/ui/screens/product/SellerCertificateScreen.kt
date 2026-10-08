@@ -42,7 +42,7 @@ val dummyCertificates = mapOf(
         certNumber = "BPOM-MPASI-2024-001234",
         issuedBy = "BPOM (Badan Pengawas Obat dan Makanan)",
         issuedDate = "01 Januari 2024",
-        expiredDate = "31 Desember 2025",
+        expiredDate = "31 Desember 2027",
         certType = "Sertifikat Produksi Pangan Industri Rumah Tangga",
         status = CertStatus.ACTIVE
     ),
@@ -51,7 +51,7 @@ val dummyCertificates = mapOf(
         certNumber = "BPOM-MPASI-2024-005678",
         issuedBy = "BPOM (Badan Pengawas Obat dan Makanan)",
         issuedDate = "15 Maret 2024",
-        expiredDate = "14 Maret 2026",
+        expiredDate = "14 Maret 2027",
         certType = "Sertifikat Produksi Pangan Industri Rumah Tangga",
         status = CertStatus.ACTIVE
     ),
@@ -60,7 +60,7 @@ val dummyCertificates = mapOf(
         certNumber = "BPOM-MPASI-2023-009012",
         issuedBy = "BPOM (Badan Pengawas Obat dan Makanan)",
         issuedDate = "10 Juni 2023",
-        expiredDate = "09 Juni 2025",
+        expiredDate = "09 Juni 2027",
         certType = "Sertifikat Halal & Produksi Pangan",
         status = CertStatus.ACTIVE
     )
@@ -69,10 +69,11 @@ val dummyCertificates = mapOf(
 @Composable
 fun SellerCertificateScreen(
     sellerName: String,
+    products: List<Product> = dummyProducts,
     onBack: () -> Unit
 ) {
     val certificate = dummyCertificates[sellerName]
-    val sellerProducts = dummyProducts.filter { it.sellerName == sellerName }
+    val sellerProducts = products.filter { it.sellerName == sellerName }
     val scrollState = rememberScrollState()
 
     Column(
@@ -84,8 +85,8 @@ fun SellerCertificateScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(OrangePrimary)
+                .statusBarsPadding()
                 .padding(16.dp)
-                .padding(top = 24.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

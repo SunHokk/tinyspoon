@@ -207,6 +207,7 @@ fun AppNavigation() {
         Screen.SELLER_CERTIFICATE -> selectedProduct?.let { product ->
             SellerCertificateScreen(
                 sellerName = product.sellerName,
+                products = products,
                 onBack = { currentScreen = Screen.PRODUCT_DETAIL }
             )
         }

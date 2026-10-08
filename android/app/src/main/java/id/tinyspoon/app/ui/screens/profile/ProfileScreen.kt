@@ -39,8 +39,8 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(OrangePrimary)
+                .statusBarsPadding()
                 .padding(16.dp)
-                .padding(top = 24.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
