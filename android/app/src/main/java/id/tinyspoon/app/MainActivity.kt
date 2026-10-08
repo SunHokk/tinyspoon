@@ -44,6 +44,8 @@ import id.tinyspoon.app.ui.screens.product.ReviewScreen
 import id.tinyspoon.app.ui.screens.seller.SellerDashboardScreen
 import id.tinyspoon.app.ui.screens.home.dummyProducts
 import id.tinyspoon.app.ui.screens.seller.SellerProductsScreen
+import id.tinyspoon.app.ui.screens.seller.SellerOrdersScreen
+import id.tinyspoon.app.ui.screens.seller.dummySellerOrders
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -71,7 +73,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS, SELLER_ORDERS
 }
 
 @Composable
@@ -80,6 +82,7 @@ fun AppNavigation() {
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
     var products by remember { mutableStateOf(dummyProducts) }
+    var sellerOrders by remember { mutableStateOf(dummySellerOrders) }
 
     when (currentScreen) {
         Screen.SPLASH -> SplashScreen(
@@ -182,10 +185,21 @@ fun AppNavigation() {
         }
 
         Screen.SELLER_DASHBOARD -> SellerDashboardScreen(
+            orders = sellerOrders,
             onBack = { currentScreen = Screen.PROFILE },
             onManageProducts = { currentScreen = Screen.SELLER_PRODUCTS },
-            onManageOrders = { },
+            onManageOrders = { currentScreen = Screen.SELLER_ORDERS },
             onSellerProfile = { }
+        )
+
+        Screen.SELLER_ORDERS -> SellerOrdersScreen(
+            orders = sellerOrders,
+            onBack = { currentScreen = Screen.SELLER_DASHBOARD },
+            onUpdateStatus = { id, newStatus ->
+                sellerOrders = sellerOrders.map {
+                    if (it.id == id) it.copy(status = newStatus) else it
+                }
+            }
         )
 
         Screen.SELLER_PRODUCTS -> SellerProductsScreen(

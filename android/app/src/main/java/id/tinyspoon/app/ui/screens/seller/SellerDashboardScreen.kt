@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,13 +18,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.tinyspoon.app.ui.theme.*
 
+private fun formatRupiahCompact(amount: Int): String = when {
+    amount >= 1_000_000 -> "Rp ${"%.1f".format(amount / 1_000_000.0)}jt"
+    amount >= 1_000 -> "Rp ${amount / 1_000}K"
+    else -> "Rp $amount"
+}
+
 @Composable
 fun SellerDashboardScreen(
+    orders: List<SellerOrder>,
     onBack: () -> Unit,
     onManageProducts: () -> Unit,
     onManageOrders: () -> Unit,
     onSellerProfile: () -> Unit
 ) {
+    val incomingCount = orders.count { it.status != OrderStatus.REJECTED }
+    val doneOrders = orders.filter { it.status == OrderStatus.DONE }
+    val revenue = doneOrders.sumOf { it.total }
+    val newCount = orders.count { it.status == OrderStatus.NEW }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -33,8 +46,8 @@ fun SellerDashboardScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(OrangePrimary)
+                .statusBarsPadding()
                 .padding(16.dp)
-                .padding(top = 24.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -107,19 +120,19 @@ fun SellerDashboardScreen(
                     SellerStatCard(
                         modifier = Modifier.weight(1f),
                         emoji = "📦",
-                        value = "12",
+                        value = incomingCount.toString(),
                         label = "Pesanan Masuk"
                     )
                     SellerStatCard(
                         modifier = Modifier.weight(1f),
                         emoji = "✅",
-                        value = "8",
+                        value = doneOrders.size.toString(),
                         label = "Selesai"
                     )
                     SellerStatCard(
                         modifier = Modifier.weight(1f),
                         emoji = "💰",
-                        value = "Rp 450K",
+                        value = formatRupiahCompact(revenue),
                         label = "Pendapatan"
                     )
                 }
@@ -148,49 +161,43 @@ fun SellerDashboardScreen(
                         modifier = Modifier.weight(1f),
                         emoji = "📋",
                         title = "Pesanan",
-                        subtitle = "Lihat & proses pesanan",
+                        subtitle = if (newCount > 0) "$newCount pesanan baru"
+                        else "Lihat & proses pesanan",
                         onClick = onManageOrders
                     )
                 }
             }
 
             item {
-                Text(
-                    text = "Pesanan Terbaru",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Pesanan Terbaru",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Lihat Semua →",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OrangePrimary,
+                        modifier = Modifier.clickable { onManageOrders() }
+                    )
+                }
             }
 
-            item {
+            items(orders.take(3), key = { it.id }) { order ->
                 SellerOrderItem(
-                    orderId = "TS-20240920-001",
-                    customerName = "Bunda Sari",
-                    items = "Bubur Ayam Sayuran x2",
-                    total = 50000,
-                    status = "Baru",
-                    statusColor = 0xFFFF9800
-                )
-            }
-            item {
-                SellerOrderItem(
-                    orderId = "TS-20240920-002",
-                    customerName = "Mama Rara",
-                    items = "Tim Ikan Salmon x1",
-                    total = 35000,
-                    status = "Dimasak",
-                    statusColor = 0xFF2196F3
-                )
-            }
-            item {
-                SellerOrderItem(
-                    orderId = "TS-20240920-003",
-                    customerName = "Ibu Dewi",
-                    items = "Puree Wortel x3",
-                    total = 60000,
-                    status = "Selesai",
-                    statusColor = 0xFF4CAF50
+                    orderId = order.id,
+                    customerName = order.customerName,
+                    items = order.items,
+                    total = order.total,
+                    status = order.status.label,
+                    statusColor = order.status.color
                 )
             }
 

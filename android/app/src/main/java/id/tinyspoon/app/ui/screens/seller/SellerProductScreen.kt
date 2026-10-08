@@ -181,7 +181,7 @@ fun SellerProductsScreen(
 }
 
 @Composable
-private fun SellerHeader(
+fun SellerHeader(
     title: String,
     subtitle: String?,
     onBack: () -> Unit
@@ -307,7 +307,7 @@ private fun SellerProductItem(
 }
 
 @Composable
-private fun ActionButton(
+fun ActionButton(
     text: String,
     color: Color,
     onClick: () -> Unit,
