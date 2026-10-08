@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.theme.*
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProductDetailScreen(
     product: Product,
@@ -52,6 +53,7 @@ fun ProductDetailScreen(
 
                 Box(
                     modifier = Modifier
+                        .statusBarsPadding()
                         .padding(16.dp)
                         .size(40.dp)
                         .background(
@@ -152,6 +154,28 @@ fun ProductDetailScreen(
                     NutritionItem(label = "Karbohidrat", value = "20g")
                     NutritionItem(label = "Lemak", value = "3g")
                     NutritionItem(label = "Serat", value = "2g")
+                }
+
+                HorizontalDivider(color = BorderOrange)
+
+                Text(
+                    text = "Kandungan Alergen",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+
+                if (product.allergens.isEmpty()) {
+                    DetailChip(text = "✅ Tidak mengandung alergen umum")
+                } else {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        product.allergens.forEach { allergen ->
+                            DetailChip(text = "⚠️ $allergen")
+                        }
+                    }
                 }
 
                 HorizontalDivider(color = BorderOrange)

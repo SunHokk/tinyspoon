@@ -14,9 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import id.tinyspoon.app.ui.screens.seller.OrderStatus
+import id.tinyspoon.app.ui.screens.seller.SellerOrder
 import id.tinyspoon.app.ui.theme.*
 
 data class OrderHistory(
@@ -25,7 +26,8 @@ data class OrderHistory(
     val items: List<String>,
     val total: Int,
     val status: String,
-    val statusColor: Long
+    val statusColor: Long,
+    val canTrack: Boolean = false
 )
 
 val dummyOrderHistory = listOf(
@@ -63,11 +65,32 @@ val dummyOrderHistory = listOf(
     ),
 )
 
+private fun SellerOrder.toHistory(): OrderHistory = OrderHistory(
+    orderId = id,
+    date = date,
+    items = items.split(", "),
+    total = total + deliveryFee,
+    status = when (status) {
+        OrderStatus.NEW -> "Menunggu"
+        OrderStatus.COOKING -> "Dimasak"
+        OrderStatus.SHIPPING -> "Dikirim"
+        OrderStatus.DONE -> "Selesai"
+        OrderStatus.REJECTED -> "Ditolak"
+    },
+    statusColor = status.color,
+    canTrack = status == OrderStatus.NEW ||
+            status == OrderStatus.COOKING ||
+            status == OrderStatus.SHIPPING
+)
+
 @Composable
 fun OrderHistoryScreen(
+    orders: List<SellerOrder>,
     onBack: () -> Unit,
     onTrackOrder: (String) -> Unit
 ) {
+    val allOrders = orders.map { it.toHistory() } + dummyOrderHistory
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -77,8 +100,8 @@ fun OrderHistoryScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(OrangePrimary)
+                .statusBarsPadding()
                 .padding(16.dp)
-                .padding(top = 24.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -106,7 +129,7 @@ fun OrderHistoryScreen(
             }
         }
 
-        if (dummyOrderHistory.isEmpty()) {
+        if (allOrders.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -135,7 +158,7 @@ fun OrderHistoryScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(dummyOrderHistory) { order ->
+                items(allOrders) { order ->
                     OrderHistoryCard(
                         order = order,
                         onTrackOrder = { onTrackOrder(order.orderId) }
@@ -231,7 +254,20 @@ fun OrderHistoryCard(
                     )
                 }
 
-                if (order.status == "Selesai") {
+                if (order.canTrack) {
+                    Button(
+                        onClick = onTrackOrder,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                    ) {
+                        Text(
+                            text = "Lacak Pesanan",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                } else if (order.status == "Selesai") {
                     OutlinedButton(
                         onClick = onTrackOrder,
                         shape = RoundedCornerShape(8.dp),
