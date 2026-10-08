@@ -89,7 +89,7 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .background(OrangePrimary)
                     .statusBarsPadding()
-                    .padding(top = 16.dp)
+                    .padding(16.dp)
             ) {
                 Column {
                     Row(
