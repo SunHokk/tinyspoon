@@ -29,6 +29,7 @@ fun ProfileScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onOrderHistoryClick: () -> Unit,
+    onFavoritesClick: () -> Unit,
     onSellerDashboardClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -152,7 +153,7 @@ fun ProfileScreen(
                         icon = Icons.Default.Favorite,
                         title = "Produk Favorit",
                         subtitle = "MPASI yang kamu sukai",
-                        onClick = {}
+                        onClick = onFavoritesClick
                     )
                     HorizontalDivider(color = BorderOrange)
                     ProfileMenuItem(

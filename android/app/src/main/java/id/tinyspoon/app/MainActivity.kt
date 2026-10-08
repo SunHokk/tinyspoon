@@ -27,6 +27,9 @@ import androidx.compose.material3.Text
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import id.tinyspoon.app.ui.screens.profile.FavoritesScreen
 import id.tinyspoon.app.ui.screens.onboarding.OnboardingScreen
 import id.tinyspoon.app.ui.theme.TinySpoonTheme
 import id.tinyspoon.app.ui.screens.auth.AuthScreen
@@ -85,7 +88,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS, SELLER_ORDERS
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS, SELLER_ORDERS, FAVORITES
 }
 
 @Composable
@@ -101,6 +104,10 @@ fun AppNavigation() {
     val currentSellerName = "Dapur Bunda"
     var selectedOrderId by remember { mutableStateOf<String?>(null) }
     var trackingBackTo by remember { mutableStateOf(Screen.HOME) }
+    var favoriteIds by remember { mutableStateOf(setOf<String>()) }
+    var detailBackTo by remember { mutableStateOf(Screen.HOME) }
+    val context = LocalContext.current
+    val favoriteProducts = products.filter { it.id in favoriteIds }
 
     when (currentScreen) {
         Screen.SPLASH -> SplashScreen(
@@ -119,24 +126,46 @@ fun AppNavigation() {
             products = products,
             onProductClick = { product ->
                 selectedProduct = product
+                detailBackTo = Screen.HOME
                 currentScreen = Screen.PRODUCT_DETAIL
             },
-            onProfileClick = { currentScreen = Screen.PROFILE}
+            onProfileClick = { currentScreen = Screen.PROFILE }
         )
 
         Screen.PROFILE -> ProfileScreen(
             orderCount = sellerOrders.count { it.customerName == buyerName } + dummyOrderHistory.size,
             reviewCount = reviews.count { it.userName == buyerName },
+            favoriteCount = favoriteProducts.size,
             onBack = { currentScreen = Screen.HOME },
             onLogout = { currentScreen = Screen.AUTH },
             onOrderHistoryClick = { currentScreen = Screen.ORDER_HISTORY },
+            onFavoritesClick = { currentScreen = Screen.FAVORITES },
             onSellerDashboardClick = { currentScreen = Screen.SELLER_DASHBOARD }
+        )
+
+        Screen.FAVORITES -> FavoritesScreen(
+            favorites = favoriteProducts,
+            onBack = { currentScreen = Screen.PROFILE },
+            onBrowseProducts = { currentScreen = Screen.HOME },
+            onProductClick = { product ->
+                selectedProduct = product
+                detailBackTo = Screen.FAVORITES
+                currentScreen = Screen.PRODUCT_DETAIL
+            },
+            onRemoveFavorite = { product ->
+                favoriteIds = favoriteIds - product.id
+            }
         )
 
         Screen.PRODUCT_DETAIL -> selectedProduct?.let { product ->
             ProductDetailScreen(
                 product = product,
-                onBack = { currentScreen = Screen.HOME },
+                isFavorite = product.id in favoriteIds,
+                onToggleFavorite = {
+                    favoriteIds = if (product.id in favoriteIds) favoriteIds - product.id
+                    else favoriteIds + product.id
+                },
+                onBack = { currentScreen = detailBackTo },
                 onAddToCart = {
                     val existingItem = cartItems.find { it.product.id == product.id }
                     cartItems = if (existingItem != null) {
@@ -203,6 +232,21 @@ fun AppNavigation() {
                 selectedOrderId = orderId
                 trackingBackTo = Screen.ORDER_HISTORY
                 currentScreen = Screen.ORDER_TRACKING
+            },
+            onReorder = { itemLines ->
+                val (updatedCart, skipped) = reorderItems(itemLines, products, cartItems)
+                if (skipped < itemLines.size) {
+                    cartItems = updatedCart
+                    currentScreen = Screen.CART
+                }
+                if (skipped > 0) {
+                    val message = if (skipped == itemLines.size) {
+                        "Produk pada pesanan ini sudah tidak tersedia"
+                    } else {
+                        "$skipped produk sudah tidak tersedia dan dilewati"
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
             }
         )
 
@@ -304,6 +348,38 @@ private fun createOrdersFromCart(
 
 private fun todayLabel(pattern: String): String =
     LocalDate.now().format(DateTimeFormatter.ofPattern(pattern, Locale("id", "ID")))
+
+private fun reorderItems(
+    itemLines: List<String>,
+    products: List<Product>,
+    cartItems: List<CartItem>
+): Pair<List<CartItem>, Int> {
+    var updated = cartItems
+    var skipped = 0
+
+    itemLines.forEach { line ->
+        val match = Regex("^(.*) x(\\d+)$").find(line.trim())
+        val name = match?.groupValues?.get(1) ?: line.trim()
+        val quantity = match?.groupValues?.get(2)?.toIntOrNull() ?: 1
+        val product = products.find { it.name.equals(name, ignoreCase = true) }
+
+        if (product == null) {
+            skipped++
+        } else {
+            val existing = updated.find { it.product.id == product.id }
+            updated = if (existing != null) {
+                updated.map {
+                    if (it.product.id == product.id) it.copy(quantity = it.quantity + quantity)
+                    else it
+                }
+            } else {
+                updated + CartItem(product, quantity)
+            }
+        }
+    }
+
+    return updated to skipped
+}
 
 @Composable
 fun SplashScreen(

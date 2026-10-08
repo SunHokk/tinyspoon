@@ -12,12 +12,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.theme.*
 
@@ -25,6 +25,8 @@ import id.tinyspoon.app.ui.theme.*
 @Composable
 fun ProductDetailScreen(
     product: Product,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onBack: () -> Unit,
     onAddToCart: () -> Unit,
     onSellerClick: () -> Unit,
@@ -68,6 +70,26 @@ fun ProductDetailScreen(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Kembali",
                         tint = TextPrimary
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .statusBarsPadding()
+                        .padding(16.dp)
+                        .size(40.dp)
+                        .background(
+                            color = Color.White,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable { onToggleFavorite() }
+                        .align(Alignment.TopEnd),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Hapus dari favorit" else "Tambah ke favorit",
+                        tint = if (isFavorite) OrangePrimary else TextPrimary
                     )
                 }
             }
