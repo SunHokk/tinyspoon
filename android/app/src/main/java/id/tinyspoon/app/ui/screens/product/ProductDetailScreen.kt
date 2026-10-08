@@ -118,7 +118,7 @@ fun ProductDetailScreen(
                             )
                         }
                         Text(
-                            text = "${product.rating} / 5.0",
+                            text = if (product.rating > 0f) "${product.rating} / 5.0" else " Belum ada ulasan",
                             fontSize = 14.sp,
                             color = TextSecondary
                         )
