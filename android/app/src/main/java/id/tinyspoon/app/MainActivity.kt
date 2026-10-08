@@ -46,6 +46,12 @@ import id.tinyspoon.app.ui.screens.home.dummyProducts
 import id.tinyspoon.app.ui.screens.seller.SellerProductsScreen
 import id.tinyspoon.app.ui.screens.seller.SellerOrdersScreen
 import id.tinyspoon.app.ui.screens.seller.dummySellerOrders
+import id.tinyspoon.app.ui.screens.order.DELIVERY_FEE_PER_SELLER
+import id.tinyspoon.app.ui.screens.seller.OrderStatus
+import id.tinyspoon.app.ui.screens.seller.SellerOrder
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -83,6 +89,10 @@ fun AppNavigation() {
     var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
     var products by remember { mutableStateOf(dummyProducts) }
     var sellerOrders by remember { mutableStateOf(dummySellerOrders) }
+    val buyerName = "Gilbert"
+    val currentSellerName = "Dapur Bunda"
+    var selectedOrderId by remember { mutableStateOf<String?>(null) }
+    var trackingBackTo by remember { mutableStateOf(Screen.HOME) }
 
     when (currentScreen) {
         Screen.SPLASH -> SplashScreen(
@@ -155,18 +165,35 @@ fun AppNavigation() {
             cartItems = cartItems,
             onBack = { currentScreen = Screen.CART },
             onOrderSuccess = {
+                val newOrders = createOrdersFromCart(cartItems, buyerName, sellerOrders.size)
+                sellerOrders = newOrders + sellerOrders
+                selectedOrderId = newOrders.firstOrNull()?.id
+                trackingBackTo = Screen.HOME
                 cartItems = emptyList()
                 currentScreen = Screen.ORDER_TRACKING
             }
         )
 
-        Screen.ORDER_TRACKING -> OrderTrackingScreen(
-            onBack = { currentScreen = Screen.HOME }
-        )
+        Screen.ORDER_TRACKING -> {
+            val order = sellerOrders.find {
+                it.id == selectedOrderId && it.customerName == buyerName
+            }
+            OrderTrackingScreen(
+                orderId = selectedOrderId ?: "-",
+                sellerName = order?.sellerName ?: currentSellerName,
+                status = order?.status ?: OrderStatus.DONE,
+                onBack = { currentScreen = trackingBackTo }
+            )
+        }
 
         Screen.ORDER_HISTORY -> OrderHistoryScreen(
+            orders = sellerOrders.filter { it.customerName == buyerName },
             onBack = { currentScreen = Screen.PROFILE },
-            onTrackOrder = { currentScreen = Screen.ORDER_TRACKING }
+            onTrackOrder = { orderId ->
+                selectedOrderId = orderId
+                trackingBackTo = Screen.ORDER_HISTORY
+                currentScreen = Screen.ORDER_TRACKING
+            }
         )
 
         Screen.REVIEW -> selectedProduct?.let { product ->
@@ -185,7 +212,7 @@ fun AppNavigation() {
         }
 
         Screen.SELLER_DASHBOARD -> SellerDashboardScreen(
-            orders = sellerOrders,
+            orders = sellerOrders.filter { it.sellerName == currentSellerName },
             onBack = { currentScreen = Screen.PROFILE },
             onManageProducts = { currentScreen = Screen.SELLER_PRODUCTS },
             onManageOrders = { currentScreen = Screen.SELLER_ORDERS },
@@ -193,7 +220,7 @@ fun AppNavigation() {
         )
 
         Screen.SELLER_ORDERS -> SellerOrdersScreen(
-            orders = sellerOrders,
+            orders = sellerOrders.filter { it.sellerName == currentSellerName },
             onBack = { currentScreen = Screen.SELLER_DASHBOARD },
             onUpdateStatus = { id, newStatus ->
                 sellerOrders = sellerOrders.map {
@@ -218,6 +245,32 @@ fun AppNavigation() {
             }
         )
     }
+}
+
+private fun createOrdersFromCart(
+    cartItems: List<CartItem>,
+    buyerName: String,
+    existingCount: Int
+): List<SellerOrder> {
+    val today = LocalDate.now()
+    val datePart = today.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+    val dateLabel = today.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("id", "ID")))
+
+    return cartItems
+        .groupBy { it.product.sellerName }
+        .entries
+        .mapIndexed { index, (sellerName, items) ->
+            SellerOrder(
+                id = "TS-$datePart-${(existingCount + index + 1).toString().padStart(3, '0')}",
+                customerName = buyerName,
+                items = items.joinToString(", ") { "${it.product.name} x${it.quantity}" },
+                total = items.sumOf { it.product.price * it.quantity },
+                status = OrderStatus.NEW,
+                sellerName = sellerName,
+                date = dateLabel,
+                deliveryFee = DELIVERY_FEE_PER_SELLER
+            )
+        }
 }
 
 @Composable

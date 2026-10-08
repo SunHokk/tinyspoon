@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import id.tinyspoon.app.ui.screens.cart.CartItem
 import id.tinyspoon.app.ui.theme.*
 
+const val DELIVERY_FEE_PER_SELLER = 10000
+
 @Composable
 fun CheckoutScreen(
     cartItems: List<CartItem>,
@@ -34,7 +36,8 @@ fun CheckoutScreen(
     var addressError by remember { mutableStateOf<String?>(null) }
 
     val totalPrice = cartItems.sumOf { it.product.price * it.quantity }
-    val deliveryFee = 10000
+    val sellerCount = cartItems.map { it.product.sellerName }.distinct().size.coerceAtLeast(1)
+    val deliveryFee = DELIVERY_FEE_PER_SELLER * sellerCount
     val grandTotal = totalPrice + deliveryFee
 
     val paymentMethods = listOf("Transfer Bank", "QRIS", "COD (Bayar di Tempat)")
@@ -211,7 +214,11 @@ fun CheckoutScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Ongkos kirim", fontSize = 14.sp, color = TextSecondary)
+                    Text(
+                        if (sellerCount > 1) "Ongkos kirim ($sellerCount seller)" else "Ongkos kirim",
+                        fontSize = 14.sp,
+                        color = TextSecondary
+                    )
                     Text("Rp $deliveryFee", fontSize = 14.sp, color = TextPrimary)
                 }
                 HorizontalDivider(

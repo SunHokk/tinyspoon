@@ -18,9 +18,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import id.tinyspoon.app.ui.screens.seller.OrderStatus
 import id.tinyspoon.app.ui.theme.*
 
-data class OrderStatus(
+data class TrackingStep(
     val step: Int,
     val title: String,
     val description: String,
@@ -29,18 +30,67 @@ data class OrderStatus(
     val isCurrent: Boolean
 )
 
+private data class TrackingHeader(
+    val emoji: String,
+    val title: String,
+    val description: String
+)
+
+private fun trackingHeader(status: OrderStatus): TrackingHeader = when (status) {
+    OrderStatus.NEW -> TrackingHeader("⏳", "Menunggu Konfirmasi", "Seller akan segera mengonfirmasi pesananmu")
+    OrderStatus.COOKING -> TrackingHeader("🍳", "Sedang Dimasak", "MPASI si kecil sedang dimasak dengan penuh kasih")
+    OrderStatus.SHIPPING -> TrackingHeader("🛵", "Dalam Pengiriman", "Pesanan sedang dalam perjalanan ke rumahmu")
+    OrderStatus.DONE -> TrackingHeader("🎉", "Pesanan Tiba", "Selamat menikmati! Jangan lupa beri ulasan")
+    OrderStatus.REJECTED -> TrackingHeader("❌", "Pesanan Ditolak", "Maaf, seller tidak dapat memproses pesananmu")
+}
+
+private fun buildTrackingSteps(status: OrderStatus): List<TrackingStep> {
+    if (status == OrderStatus.REJECTED) {
+        return listOf(
+            TrackingStep(1, "Pesanan Dibuat", "Pesanan kamu telah berhasil dibuat", "", true, false),
+            TrackingStep(2, "Pesanan Ditolak", "Seller tidak dapat memproses pesananmu", "", true, true)
+        )
+    }
+
+    val progress = when (status) {
+        OrderStatus.NEW -> 1
+        OrderStatus.COOKING -> 3
+        OrderStatus.SHIPPING -> 4
+        OrderStatus.DONE -> 5
+        OrderStatus.REJECTED -> 1
+    }
+
+    val definitions = listOf(
+        "Pesanan Dibuat" to "Pesanan kamu telah berhasil dibuat",
+        "Pesanan Dikonfirmasi" to "Seller sedang mempersiapkan pesananmu",
+        "Sedang Dimasak" to "MPASI si kecil sedang dimasak dengan penuh kasih",
+        "Dalam Pengiriman" to "Pesanan sedang dalam perjalanan ke rumahmu",
+        "Pesanan Tiba" to "Selamat menikmati! Jangan lupa beri ulasan"
+    )
+
+    return definitions.mapIndexed { index, (title, description) ->
+        val step = index + 1
+        TrackingStep(
+            step = step,
+            title = title,
+            description = description,
+            time = "",
+            isCompleted = step <= progress,
+            isCurrent = step == progress && status != OrderStatus.DONE
+        )
+    }
+}
+
 @Composable
 fun OrderTrackingScreen(
-    orderId: String = "TS-20240920-001",
+    orderId: String,
+    sellerName: String,
+    status: OrderStatus,
     onBack: () -> Unit
 ) {
-    val orderStatuses = listOf(
-        OrderStatus(1, "Pesanan Dibuat", "Pesanan kamu telah berhasil dibuat", "09:00", true, false),
-        OrderStatus(2, "Pesanan Dikonfirmasi", "Seller sedang mempersiapkan pesananmu", "09:05", true, false),
-        OrderStatus(3, "Sedang Dimasak", "MPASI si kecil sedang dimasak dengan penuh kasih", "09:15", true, true),
-        OrderStatus(4, "Dalam Pengiriman", "Pesanan sedang dalam perjalanan ke rumahmu", "", false, false),
-        OrderStatus(5, "Pesanan Tiba", "Selamat menikmati! Jangan lupa beri ulasan", "", false, false),
-    )
+    val steps = buildTrackingSteps(status)
+    val header = trackingHeader(status)
+    val isActive = status != OrderStatus.DONE && status != OrderStatus.REJECTED
 
     Column(
         modifier = Modifier
@@ -51,8 +101,8 @@ fun OrderTrackingScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(OrangePrimary)
+                .statusBarsPadding()
                 .padding(16.dp)
-                .padding(top = 24.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -101,19 +151,21 @@ fun OrderTrackingScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(text = "🍳", fontSize = 48.sp)
+                    Text(text = header.emoji, fontSize = 48.sp)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Sedang Dimasak",
+                        text = header.title,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = OrangePrimary
+                        color = if (status == OrderStatus.REJECTED) Color(0xFFE53935) else OrangePrimary
                     )
                     Text(
-                        text = "MPASI si kecil sedang dimasak dengan penuh kasih",
+                        text = header.description,
                         fontSize = 14.sp,
                         color = TextSecondary,
                         textAlign = TextAlign.Center
@@ -136,10 +188,10 @@ fun OrderTrackingScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    orderStatuses.forEachIndexed { index, status ->
+                    steps.forEachIndexed { index, step ->
                         OrderTimelineItem(
-                            status = status,
-                            isLast = index == orderStatuses.size - 1
+                            status = step,
+                            isLast = index == steps.size - 1
                         )
                     }
                 }
@@ -160,8 +212,10 @@ fun OrderTrackingScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     InfoRow(label = "Kurir", value = "TinySpoon Express 🛵")
-                    InfoRow(label = "Estimasi", value = "15-30 menit")
-                    InfoRow(label = "Seller", value = "Dapur Bunda")
+                    if (isActive) {
+                        InfoRow(label = "Estimasi", value = "15-30 menit")
+                    }
+                    InfoRow(label = "Seller", value = sellerName)
                 }
             }
         }
@@ -170,7 +224,7 @@ fun OrderTrackingScreen(
 
 @Composable
 fun OrderTimelineItem(
-    status: OrderStatus,
+    status: TrackingStep,
     isLast: Boolean
 ) {
     Row(modifier = Modifier.fillMaxWidth()) {

@@ -44,7 +44,10 @@ data class SellerOrder(
     val customerName: String,
     val items: String,
     val total: Int,
-    val status: OrderStatus
+    val status: OrderStatus,
+    val sellerName: String = "Dapur Bunda",
+    val date: String = "",
+    val deliveryFee: Int = 0
 )
 
 val dummySellerOrders = listOf(
@@ -203,7 +206,7 @@ private fun SellerOrderCard(
                         color = TextPrimary
                     )
                     Text(
-                        text = order.id,
+                        text = if (order.date.isNotBlank()) "${order.id} • ${order.date}" else order.id,
                         fontSize = 11.sp,
                         color = TextSecondary
                     )
