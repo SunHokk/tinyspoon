@@ -42,6 +42,8 @@ import id.tinyspoon.app.ui.screens.order.OrderHistoryScreen
 import id.tinyspoon.app.ui.screens.product.SellerCertificateScreen
 import id.tinyspoon.app.ui.screens.product.ReviewScreen
 import id.tinyspoon.app.ui.screens.seller.SellerDashboardScreen
+import id.tinyspoon.app.ui.screens.home.dummyProducts
+import id.tinyspoon.app.ui.screens.seller.SellerProductsScreen
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -69,7 +71,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS
 }
 
 @Composable
@@ -77,6 +79,7 @@ fun AppNavigation() {
     var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
+    var products by remember { mutableStateOf(dummyProducts) }
 
     when (currentScreen) {
         Screen.SPLASH -> SplashScreen(
@@ -92,6 +95,7 @@ fun AppNavigation() {
         )
 
         Screen.HOME -> HomeScreen(
+            products = products,
             onProductClick = { product ->
                 selectedProduct = product
                 currentScreen = Screen.PRODUCT_DETAIL
@@ -179,9 +183,25 @@ fun AppNavigation() {
 
         Screen.SELLER_DASHBOARD -> SellerDashboardScreen(
             onBack = { currentScreen = Screen.PROFILE },
-            onManageProducts = { },
+            onManageProducts = { currentScreen = Screen.SELLER_PRODUCTS },
             onManageOrders = { },
             onSellerProfile = { }
+        )
+
+        Screen.SELLER_PRODUCTS -> SellerProductsScreen(
+            sellerName = "Dapur Bunda",
+            products = products,
+            onBack = { currentScreen = Screen.SELLER_DASHBOARD },
+            onSaveProduct = { saved ->
+                products = if (products.any { it.id == saved.id }) {
+                    products.map { if (it.id == saved.id) saved else it }
+                } else {
+                    products + saved
+                }
+            },
+            onDeleteProduct = { id ->
+                products = products.filterNot { it.id == id }
+            }
         )
     }
 }

@@ -50,6 +50,7 @@ val allergenOptions = listOf("Susu", "Telur", "Kacang", "Gluten", "Seafood")
 
 @Composable
 fun HomeScreen(
+    products: List<Product> = dummyProducts,
     onProductClick: (Product) -> Unit,
     onProfileClick: () -> Unit
 ) {
@@ -68,7 +69,7 @@ fun HomeScreen(
         excludedAllergens = emptySet()
     }
 
-    val filteredProducts = dummyProducts.filter { product ->
+    val filteredProducts = products.filter { product ->
         val matchSearch = product.name.contains(searchQuery, ignoreCase = true) ||
                 product.sellerName.contains(searchQuery, ignoreCase = true)
         val matchCategory = selectedCategory == "Semua" || product.ageGroup == selectedCategory
@@ -87,8 +88,8 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(OrangePrimary)
-                    .padding(16.dp)
-                    .padding(top = 24.dp)
+                    .statusBarsPadding()
+                    .padding(top = 16.dp)
             ) {
                 Column {
                     Row(
