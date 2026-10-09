@@ -26,13 +26,30 @@ fun ProfileScreen(
     orderCount: Int,
     reviewCount: Int,
     favoriteCount: Int = 0,
+    appRating: Int = 0,
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onOrderHistoryClick: () -> Unit,
     onFavoritesClick: () -> Unit,
+    onAddressesClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
+    onAboutClick: () -> Unit,
+    onSubmitAppRating: (rating: Int, feedback: String) -> Unit,
     onSellerDashboardClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    var showRatingDialog by remember { mutableStateOf(false) }
+
+    if (showRatingDialog) {
+        AppRatingDialog(
+            initialRating = appRating,
+            onDismiss = { showRatingDialog = false },
+            onSubmit = { rating, feedback ->
+                onSubmitAppRating(rating, feedback)
+                showRatingDialog = false
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -160,14 +177,14 @@ fun ProfileScreen(
                         icon = Icons.Default.LocationOn,
                         title = "Alamat Tersimpan",
                         subtitle = "Kelola alamat pengirimanmu",
-                        onClick = {}
+                        onClick = onAddressesClick
                     )
                     HorizontalDivider(color = BorderOrange)
                     ProfileMenuItem(
                         icon = Icons.Default.Notifications,
                         title = "Notifikasi",
                         subtitle = "Atur preferensi notifikasi",
-                        onClick = {}
+                        onClick = onNotificationsClick
                     )
                 }
             }
@@ -183,14 +200,14 @@ fun ProfileScreen(
                         icon = Icons.Default.Info,
                         title = "Tentang TinySpoon",
                         subtitle = "Versi 1.0.0",
-                        onClick = {}
+                        onClick = onAboutClick
                     )
                     HorizontalDivider(color = BorderOrange)
                     ProfileMenuItem(
                         icon = Icons.Default.Star,
                         title = "Beri Rating",
-                        subtitle = "Bantu kami berkembang",
-                        onClick = {}
+                        subtitle = if (appRating > 0) "Penilaianmu: $appRating ⭐" else "Bantu kami berkembang",
+                        onClick = { showRatingDialog = true }
                     )
                 }
             }
@@ -232,6 +249,78 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
     }
+}
+
+@Composable
+private fun AppRatingDialog(
+    initialRating: Int,
+    onDismiss: () -> Unit,
+    onSubmit: (Int, String) -> Unit
+) {
+    var rating by remember { mutableStateOf(initialRating) }
+    var feedback by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (rating == 0) {
+                        error = "Pilih jumlah bintang dulu"
+                    } else {
+                        onSubmit(rating, feedback.trim())
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+            ) {
+                Text("Kirim", color = Color.White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Batal", color = TextSecondary)
+            }
+        },
+        title = {
+            Text("Beri Rating TinySpoon", fontWeight = FontWeight.Bold, color = TextPrimary)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "Seberapa puas kamu dengan aplikasi ini?",
+                    fontSize = 14.sp,
+                    color = TextSecondary
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    repeat(5) { index ->
+                        Text(
+                            text = if (index < rating) "⭐" else "☆",
+                            fontSize = 32.sp,
+                            modifier = Modifier.clickable {
+                                rating = index + 1
+                                error = null
+                            }
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = feedback,
+                    onValueChange = { feedback = it },
+                    label = { Text("Masukan (opsional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = tinySpoonFieldColors(),
+                    minLines = 2
+                )
+                if (error != null) {
+                    Text(text = error!!, color = Color.Red, fontSize = 12.sp)
+                }
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(16.dp)
+    )
 }
 
 @Composable

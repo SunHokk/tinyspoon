@@ -136,6 +136,7 @@ fun LoginForm(onLoginClick: () -> Unit) {
     var passwordVisible by remember { mutableStateOf(false) }
     var emailError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
+    var showForgotPassword by remember { mutableStateOf(false) }
 
     fun validate(): Boolean {
         var isValid = true
@@ -158,6 +159,13 @@ fun LoginForm(onLoginClick: () -> Unit) {
         }
 
         return isValid
+    }
+
+    if (showForgotPassword) {
+        ForgotPasswordDialog(
+            initialEmail = email,
+            onDismiss = { showForgotPassword = false }
+        )
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -189,7 +197,11 @@ fun LoginForm(onLoginClick: () -> Unit) {
             text = "Lupa password?",
             color = OrangePrimary,
             fontSize = 13.sp,
-            modifier = Modifier.align(Alignment.End)
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(Alignment.End)
+                .clickable { showForgotPassword = true }
+                .padding(vertical = 4.dp)
         )
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -199,6 +211,85 @@ fun LoginForm(onLoginClick: () -> Unit) {
             onClick = { if (validate()) onLoginClick() }
         )
     }
+}
+
+@Composable
+fun ForgotPasswordDialog(
+    initialEmail: String,
+    onDismiss: () -> Unit
+) {
+    var email by remember { mutableStateOf(initialEmail) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var sent by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(
+                onClick = {
+                    when {
+                        sent -> onDismiss()
+                        email.isBlank() -> error = "Email tidak boleh kosong"
+                        !email.contains("@") || !email.contains(".") -> error = "Format email tidak valid"
+                        else -> sent = true
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+            ) {
+                Text(if (sent) "Tutup" else "Kirim Tautan", color = Color.White)
+            }
+        },
+        dismissButton = {
+            if (!sent) {
+                TextButton(onClick = onDismiss) {
+                    Text("Batal", color = TextSecondary)
+                }
+            }
+        },
+        title = {
+            Text(
+                text = if (sent) "Cek emailmu 📬" else "Lupa Password?",
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+        },
+        text = {
+            if (sent) {
+                Text(
+                    text = "Kami mengirim tautan untuk mengatur ulang password ke ${email.trim()}. Periksa kotak masuk atau folder spam.",
+                    fontSize = 14.sp,
+                    color = TextSecondary
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Masukkan email akunmu dan kami akan mengirim tautan untuk mengatur ulang password.",
+                        fontSize = 14.sp,
+                        color = TextSecondary
+                    )
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = {
+                            email = it
+                            error = null
+                        },
+                        label = { Text("Email") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        isError = error != null,
+                        colors = tinySpoonFieldColors(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        singleLine = true
+                    )
+                    if (error != null) {
+                        Text(text = error!!, color = Color.Red, fontSize = 12.sp)
+                    }
+                }
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(16.dp)
+    )
 }
 
 @Composable

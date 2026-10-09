@@ -56,6 +56,14 @@ import id.tinyspoon.app.ui.screens.order.dummyOrderHistory
 import id.tinyspoon.app.ui.screens.product.Review
 import id.tinyspoon.app.ui.screens.product.seedReviewsFor
 import id.tinyspoon.app.ui.screens.product.withRatingsFrom
+import id.tinyspoon.app.ui.screens.profile.AboutScreen
+import id.tinyspoon.app.ui.screens.profile.AddressScreen
+import id.tinyspoon.app.ui.screens.profile.NotificationPrefs
+import id.tinyspoon.app.ui.screens.profile.NotificationSettingsScreen
+import id.tinyspoon.app.ui.screens.profile.dummyAddresses
+import id.tinyspoon.app.ui.screens.profile.withDefault
+import id.tinyspoon.app.ui.screens.profile.withSaved
+import id.tinyspoon.app.ui.screens.profile.withoutAddress
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -88,7 +96,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS, SELLER_ORDERS, FAVORITES
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS, SELLER_ORDERS, FAVORITES, ADDRESSES, NOTIFICATION_SETTINGS, ABOUT
 }
 
 @Composable
@@ -107,6 +115,9 @@ fun AppNavigation() {
     var favoriteIds by remember { mutableStateOf(setOf<String>()) }
     var detailBackTo by remember { mutableStateOf(Screen.HOME) }
     var cartBackTo by remember { mutableStateOf(Screen.HOME) }
+    var addresses by remember { mutableStateOf(dummyAddresses) }
+    var notifPrefs by remember { mutableStateOf(NotificationPrefs()) }
+    var appRating by remember { mutableStateOf(0) }
     val context = LocalContext.current
     val favoriteProducts = products.filter { it.id in favoriteIds }
 
@@ -137,11 +148,37 @@ fun AppNavigation() {
             orderCount = sellerOrders.count { it.customerName == buyerName } + dummyOrderHistory.size,
             reviewCount = reviews.count { it.userName == buyerName },
             favoriteCount = favoriteProducts.size,
+            appRating = appRating,
             onBack = { currentScreen = Screen.HOME },
             onLogout = { currentScreen = Screen.AUTH },
             onOrderHistoryClick = { currentScreen = Screen.ORDER_HISTORY },
             onFavoritesClick = { currentScreen = Screen.FAVORITES },
+            onAddressesClick = { currentScreen = Screen.ADDRESSES },
+            onNotificationsClick = { currentScreen = Screen.NOTIFICATION_SETTINGS },
+            onAboutClick = { currentScreen = Screen.ABOUT },
+            onSubmitAppRating = { rating, _ ->
+                appRating = rating
+                Toast.makeText(context, "Terima kasih atas penilaianmu!", Toast.LENGTH_SHORT).show()
+            },
             onSellerDashboardClick = { currentScreen = Screen.SELLER_DASHBOARD }
+        )
+
+        Screen.ADDRESSES -> AddressScreen(
+            addresses = addresses,
+            onBack = { currentScreen = Screen.PROFILE },
+            onSaveAddress = { saved -> addresses = addresses.withSaved(saved) },
+            onDeleteAddress = { id -> addresses = addresses.withoutAddress(id) },
+            onSetDefault = { id -> addresses = addresses.withDefault(id) }
+        )
+
+        Screen.NOTIFICATION_SETTINGS -> NotificationSettingsScreen(
+            prefs = notifPrefs,
+            onBack = { currentScreen = Screen.PROFILE },
+            onPrefsChange = { notifPrefs = it }
+        )
+
+        Screen.ABOUT -> AboutScreen(
+            onBack = { currentScreen = Screen.PROFILE }
         )
 
         Screen.FAVORITES -> FavoritesScreen(
@@ -205,6 +242,7 @@ fun AppNavigation() {
 
         Screen.CHECKOUT -> CheckoutScreen(
             cartItems = cartItems,
+            savedAddresses = addresses,
             onBack = { currentScreen = Screen.CART },
             onOrderSuccess = {
                 val newOrders = createOrdersFromCart(cartItems, buyerName, sellerOrders.size)

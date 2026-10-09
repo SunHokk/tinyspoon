@@ -18,18 +18,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import id.tinyspoon.app.ui.screens.cart.CartItem
 import id.tinyspoon.app.ui.theme.*
+import id.tinyspoon.app.ui.screens.home.CategoryChip
+import id.tinyspoon.app.ui.screens.profile.SavedAddress
+import id.tinyspoon.app.ui.screens.profile.asDeliveryText
 
 const val DELIVERY_FEE_PER_SELLER = 10000
 
 @Composable
 fun CheckoutScreen(
     cartItems: List<CartItem>,
+    savedAddresses: List<SavedAddress>,
     onBack: () -> Unit,
     onOrderSuccess: () -> Unit
 ) {
-    var address by rememberSaveable { mutableStateOf("") }
+    var address by rememberSaveable { mutableStateOf(savedAddresses.firstOrNull { it.isDefault }?.asDeliveryText() ?: "") }
     var notes by rememberSaveable { mutableStateOf("") }
     var selectedPayment by rememberSaveable { mutableStateOf("Transfer Bank") }
     var showSuccessDialog by remember { mutableStateOf(false) }
@@ -141,6 +147,35 @@ fun CheckoutScreen(
             }
 
             CheckoutSection(title = "Alamat Pengiriman") {
+                if (savedAddresses.isNotEmpty()) {
+                    Text(
+                        text = "Pilih alamat tersimpan",
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(savedAddresses, key = { it.id }) { saved ->
+                            CategoryChip(
+                                text = saved.label,
+                                isSelected = address == saved.asDeliveryText(),
+                                onClick = {
+                                    address = saved.asDeliveryText()
+                                    addressError = null
+                                }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                } else {
+                    Text(
+                        text = "Simpan alamat di Profil → Alamat Tersimpan supaya checkout lebih cepat",
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 OutlinedTextField(
                     value = address,
                     onValueChange = {
