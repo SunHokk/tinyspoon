@@ -28,6 +28,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.platform.LocalContext
 import id.tinyspoon.app.ui.screens.profile.FavoritesScreen
 import id.tinyspoon.app.ui.screens.onboarding.OnboardingScreen
@@ -120,6 +121,22 @@ fun AppNavigation() {
     var appRating by remember { mutableStateOf(0) }
     val context = LocalContext.current
     val favoriteProducts = products.filter { it.id in favoriteIds }
+    val backTarget: Screen? = when (currentScreen) {
+        Screen.SPLASH, Screen.ONBOARDING, Screen.AUTH, Screen.HOME -> null
+        Screen.PRODUCT_DETAIL -> detailBackTo
+        Screen.CART -> cartBackTo
+        Screen.CHECKOUT -> Screen.CART
+        Screen.SELLER_CERTIFICATE, Screen.REVIEW -> Screen.PRODUCT_DETAIL
+        Screen.ORDER_TRACKING -> trackingBackTo
+        Screen.PROFILE -> Screen.HOME
+        Screen.ORDER_HISTORY, Screen.FAVORITES, Screen.ADDRESSES,
+        Screen.NOTIFICATION_SETTINGS, Screen.ABOUT, Screen.SELLER_DASHBOARD -> Screen.PROFILE
+        Screen.SELLER_PRODUCTS, Screen.SELLER_ORDERS -> Screen.SELLER_DASHBOARD
+    }
+
+    BackHandler(enabled = backTarget != null) {
+        backTarget?.let { currentScreen = it }
+    }
 
     when (currentScreen) {
         Screen.SPLASH -> SplashScreen(

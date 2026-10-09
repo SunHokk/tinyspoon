@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.BackHandler
 import id.tinyspoon.app.ui.screens.home.CategoryChip
 import id.tinyspoon.app.ui.screens.seller.ActionButton
 import id.tinyspoon.app.ui.screens.seller.SellerHeader
@@ -71,6 +72,11 @@ fun AddressScreen(
     var showForm by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<SavedAddress?>(null) }
     var toDelete by remember { mutableStateOf<SavedAddress?>(null) }
+
+    BackHandler(enabled = showForm) {
+        showForm = false
+        editing = null
+    }
 
     toDelete?.let { address ->
         AlertDialog(

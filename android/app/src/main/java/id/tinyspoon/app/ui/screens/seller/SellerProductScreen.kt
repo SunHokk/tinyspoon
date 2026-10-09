@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.BackHandler
 import id.tinyspoon.app.ui.screens.home.AgeChip
 import id.tinyspoon.app.ui.screens.home.CategoryChip
 import id.tinyspoon.app.ui.screens.home.Product
@@ -46,6 +47,11 @@ fun SellerProductsScreen(
     var productToDelete by remember { mutableStateOf<Product?>(null) }
 
     val myProducts = products.filter { it.sellerName == sellerName }
+
+    BackHandler(enabled = showForm) {
+        showForm = false
+        editingProduct = null
+    }
 
     productToDelete?.let { product ->
         AlertDialog(
