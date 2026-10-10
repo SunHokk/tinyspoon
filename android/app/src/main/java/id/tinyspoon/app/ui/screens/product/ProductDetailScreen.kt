@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.theme.*
+import id.tinyspoon.app.ui.screens.home.hasNutrition
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -162,20 +163,24 @@ fun ProductDetailScreen(
                 HorizontalDivider(color = BorderOrange)
 
                 Text(
-                    text = "Informasi Nutrisi",
+                    text = "Informasi Nutrisi (per porsi)",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    NutritionItem(label = "Protein", value = "5g")
-                    NutritionItem(label = "Karbohidrat", value = "20g")
-                    NutritionItem(label = "Lemak", value = "3g")
-                    NutritionItem(label = "Serat", value = "2g")
+                if (product.hasNutrition) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        NutritionItem(label = "Protein", value = "${product.protein}g")
+                        NutritionItem(label = "Karbohidrat", value = "${product.carbs}g")
+                        NutritionItem(label = "Lemak", value = "${product.fat}g")
+                        NutritionItem(label = "Serat", value = "${product.fiber}g")
+                    }
+                } else {
+                    DetailChip(text = "ℹ️ Informasi gizi belum diisi seller")
                 }
 
                 HorizontalDivider(color = BorderOrange)

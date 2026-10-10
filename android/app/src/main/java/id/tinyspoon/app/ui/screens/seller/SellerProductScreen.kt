@@ -361,6 +361,25 @@ private fun FormSection(
 }
 
 @Composable
+private fun NutritionField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { onValueChange(it.filter { c -> c.isDigit() }.take(3)) },
+        label = { Text(label, fontSize = 12.sp) },
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = tinySpoonFieldColors(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        singleLine = true
+    )
+}
+
+@Composable
 private fun ProductForm(
     initial: Product?,
     sellerName: String,
@@ -373,6 +392,11 @@ private fun ProductForm(
     var ageGroup by remember { mutableStateOf(initial?.ageGroup ?: ageCategories[1]) }
     var texture by remember { mutableStateOf(initial?.texture ?: textureCategories[1]) }
     var allergens by remember { mutableStateOf(initial?.allergens?.toSet() ?: emptySet()) }
+    var proteinText by remember { mutableStateOf(initial?.protein?.toString() ?: "") }
+    var carbsText by remember { mutableStateOf(initial?.carbs?.toString() ?: "") }
+    var fatText by remember { mutableStateOf(initial?.fat?.toString() ?: "") }
+    var fiberText by remember { mutableStateOf(initial?.fiber?.toString() ?: "") }
+    var nutritionError by remember { mutableStateOf<String?>(null) }
 
     var nameError by remember { mutableStateOf<String?>(null) }
     var priceError by remember { mutableStateOf<String?>(null) }
@@ -397,6 +421,15 @@ private fun ProductForm(
 
         if (emoji.isBlank()) {
             emojiError = "Emoji tidak boleh kosong"
+            isValid = false
+        }
+
+        val nutritionValues = listOf(proteinText, carbsText, fatText, fiberText).map { it.toIntOrNull() }
+        if (nutritionValues.any { it == null || it !in 0..100 }) {
+            nutritionError = "Isi keempat nilai gizi dengan angka 0-100"
+            isValid = false
+        } else if (nutritionValues.sumOf { it ?: 0 } == 0) {
+            nutritionError = "Isi minimal satu nilai gizi lebih dari 0"
             isValid = false
         }
 
@@ -495,6 +528,58 @@ private fun ProductForm(
                 }
             }
 
+            FormSection(title = "Informasi Gizi (per porsi)") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NutritionField(
+                        label = "Protein (g)",
+                        value = proteinText,
+                        onValueChange = {
+                            proteinText = it
+                            nutritionError = null
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                    NutritionField(
+                        label = "Karbohidrat (g)",
+                        value = carbsText,
+                        onValueChange = {
+                            carbsText = it
+                            nutritionError = null
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NutritionField(
+                        label = "Lemak (g)",
+                        value = fatText,
+                        onValueChange = {
+                            fatText = it
+                            nutritionError = null
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                    NutritionField(
+                        label = "Serat (g)",
+                        value = fiberText,
+                        onValueChange = {
+                            fiberText = it
+                            nutritionError = null
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (nutritionError != null) {
+                    Text(
+                        text = nutritionError!!,
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(start = 4.dp, top = 6.dp)
+                    )
+                }
+            }
+
             FormSection(title = "Usia Bayi") {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(ageCategories.drop(1)) { age ->
@@ -562,7 +647,11 @@ private fun ProductForm(
                                 texture = texture,
                                 rating = initial?.rating ?: 0f,
                                 imageEmoji = emoji.trim(),
-                                allergens = allergenOptions.filter { it in allergens }
+                                allergens = allergenOptions.filter { it in allergens },
+                                protein = proteinText.toInt(),
+                                carbs = carbsText.toInt(),
+                                fat = fatText.toInt(),
+                                fiber = fiberText.toInt()
                             )
                         )
                     }
