@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.screens.home.dummyProducts
 import id.tinyspoon.app.ui.theme.*
+import id.tinyspoon.app.ui.screens.seller.ShopProfile
 
 data class SellerCertificate(
     val sellerName: String,
@@ -70,6 +71,7 @@ val dummyCertificates = mapOf(
 fun SellerCertificateScreen(
     sellerName: String,
     products: List<Product> = dummyProducts,
+    shop: ShopProfile? = null,
     onBack: () -> Unit
 ) {
     val certificate = dummyCertificates[sellerName]
@@ -164,6 +166,47 @@ fun SellerCertificateScreen(
                         SellerStat(value = "${sellerProducts.size}", label = "Produk")
                         SellerStat(value = "4.8⭐", label = "Rating")
                         SellerStat(value = "120+", label = "Pesanan")
+                    }
+                }
+            }
+
+            if (shop != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(text = "🏪", fontSize = 24.sp)
+                            Text(
+                                text = "Info Toko",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = shop.description,
+                            fontSize = 14.sp,
+                            color = TextSecondary,
+                            lineHeight = 22.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        HorizontalDivider(color = BorderOrange)
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        CertDetail(label = "Alamat", value = shop.address)
+                        CertDetail(label = "Jam Operasional", value = shop.openHours)
+                        CertDetail(label = "Telepon", value = shop.phone)
                     }
                 }
             }

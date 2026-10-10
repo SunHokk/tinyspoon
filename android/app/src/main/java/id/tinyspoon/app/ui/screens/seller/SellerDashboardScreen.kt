@@ -165,6 +165,8 @@ fun SellerDashboardScreen(
                         else "Lihat & proses pesanan",
                         onClick = onManageOrders
                     )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SellerShopCard(onClick = onSellerProfile)
                 }
             }
 
@@ -309,6 +311,47 @@ fun SellerMenuCard(
                 color = TextSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
+        }
+    }
+}
+
+@Composable
+fun SellerShopCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(OrangePrimaryLight, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "🏪", fontSize = 20.sp)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Profil Toko",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "Deskripsi, alamat, telepon, dan jam buka",
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+            }
+            Text(text = "→", fontSize = 16.sp, color = TextSecondary)
         }
     }
 }

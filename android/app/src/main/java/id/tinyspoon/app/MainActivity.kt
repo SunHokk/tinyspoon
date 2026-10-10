@@ -65,6 +65,8 @@ import id.tinyspoon.app.ui.screens.profile.dummyAddresses
 import id.tinyspoon.app.ui.screens.profile.withDefault
 import id.tinyspoon.app.ui.screens.profile.withSaved
 import id.tinyspoon.app.ui.screens.profile.withoutAddress
+import id.tinyspoon.app.ui.screens.seller.SellerShopProfileScreen
+import id.tinyspoon.app.ui.screens.seller.dummyShops
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -97,7 +99,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS, SELLER_ORDERS, FAVORITES, ADDRESSES, NOTIFICATION_SETTINGS, ABOUT
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS, SELLER_ORDERS, FAVORITES, ADDRESSES, NOTIFICATION_SETTINGS, ABOUT, SELLER_SHOP
 }
 
 @Composable
@@ -119,6 +121,7 @@ fun AppNavigation() {
     var addresses by remember { mutableStateOf(dummyAddresses) }
     var notifPrefs by remember { mutableStateOf(NotificationPrefs()) }
     var appRating by remember { mutableStateOf(0) }
+    var shops by remember { mutableStateOf(dummyShops) }
     val context = LocalContext.current
     val favoriteProducts = products.filter { it.id in favoriteIds }
     val backTarget: Screen? = when (currentScreen) {
@@ -131,7 +134,7 @@ fun AppNavigation() {
         Screen.PROFILE -> Screen.HOME
         Screen.ORDER_HISTORY, Screen.FAVORITES, Screen.ADDRESSES,
         Screen.NOTIFICATION_SETTINGS, Screen.ABOUT, Screen.SELLER_DASHBOARD -> Screen.PROFILE
-        Screen.SELLER_PRODUCTS, Screen.SELLER_ORDERS -> Screen.SELLER_DASHBOARD
+        Screen.SELLER_PRODUCTS, Screen.SELLER_ORDERS, Screen.SELLER_SHOP -> Screen.SELLER_DASHBOARD
     }
 
     BackHandler(enabled = backTarget != null) {
@@ -339,6 +342,7 @@ fun AppNavigation() {
             SellerCertificateScreen(
                 sellerName = product.sellerName,
                 products = products,
+                shop = shops[product.sellerName],
                 onBack = { currentScreen = Screen.PRODUCT_DETAIL }
             )
         }
@@ -348,7 +352,7 @@ fun AppNavigation() {
             onBack = { currentScreen = Screen.PROFILE },
             onManageProducts = { currentScreen = Screen.SELLER_PRODUCTS },
             onManageOrders = { currentScreen = Screen.SELLER_ORDERS },
-            onSellerProfile = { }
+            onSellerProfile = { currentScreen = Screen.SELLER_SHOP }
         )
 
         Screen.SELLER_ORDERS -> SellerOrdersScreen(
@@ -376,6 +380,20 @@ fun AppNavigation() {
                 products = products.filterNot { it.id == id }
             }
         )
+
+        Screen.SELLER_SHOP -> {
+            val shop = shops[currentSellerName]
+            if (shop != null) {
+                SellerShopProfileScreen(
+                    shop = shop,
+                    onBack = { currentScreen = Screen.SELLER_DASHBOARD },
+                    onSave = { updated ->
+                        shops = shops + (currentSellerName to updated)
+                        Toast.makeText(context, "Profil toko diperbarui", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+        }
     }
 }
 
