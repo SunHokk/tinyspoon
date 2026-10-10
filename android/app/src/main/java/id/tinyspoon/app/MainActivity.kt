@@ -1,7 +1,9 @@
 package id.tinyspoon.app
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,58 +22,61 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.Text
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import android.widget.Toast
-import androidx.activity.compose.BackHandler
-import androidx.compose.ui.platform.LocalContext
-import id.tinyspoon.app.ui.screens.profile.FavoritesScreen
-import id.tinyspoon.app.ui.screens.onboarding.OnboardingScreen
-import id.tinyspoon.app.ui.theme.TinySpoonTheme
+import id.tinyspoon.app.ui.screens.admin.AdminDashboardScreen
 import id.tinyspoon.app.ui.screens.auth.AuthScreen
-import id.tinyspoon.app.ui.screens.home.HomeScreen
-import id.tinyspoon.app.ui.screens.product.ProductDetailScreen
-import id.tinyspoon.app.ui.screens.home.Product
+import id.tinyspoon.app.ui.screens.auth.SellerStatus
+import id.tinyspoon.app.ui.screens.auth.UserAccount
+import id.tinyspoon.app.ui.screens.auth.UserRole
+import id.tinyspoon.app.ui.screens.auth.dummyAccounts
 import id.tinyspoon.app.ui.screens.cart.CartItem
 import id.tinyspoon.app.ui.screens.cart.CartScreen
-import id.tinyspoon.app.ui.screens.order.CheckoutScreen
-import id.tinyspoon.app.ui.screens.order.OrderTrackingScreen
-import id.tinyspoon.app.ui.screens.profile.ProfileScreen
-import id.tinyspoon.app.ui.screens.order.OrderHistoryScreen
-import id.tinyspoon.app.ui.screens.product.SellerCertificateScreen
-import id.tinyspoon.app.ui.screens.product.ReviewScreen
-import id.tinyspoon.app.ui.screens.seller.SellerDashboardScreen
+import id.tinyspoon.app.ui.screens.home.HomeScreen
+import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.screens.home.dummyProducts
-import id.tinyspoon.app.ui.screens.seller.SellerProductsScreen
-import id.tinyspoon.app.ui.screens.seller.SellerOrdersScreen
-import id.tinyspoon.app.ui.screens.seller.dummySellerOrders
+import id.tinyspoon.app.ui.screens.onboarding.OnboardingScreen
+import id.tinyspoon.app.ui.screens.order.CheckoutScreen
 import id.tinyspoon.app.ui.screens.order.DELIVERY_FEE_PER_SELLER
-import id.tinyspoon.app.ui.screens.seller.OrderStatus
-import id.tinyspoon.app.ui.screens.seller.SellerOrder
+import id.tinyspoon.app.ui.screens.order.OrderHistoryScreen
+import id.tinyspoon.app.ui.screens.order.OrderTrackingScreen
 import id.tinyspoon.app.ui.screens.order.dummyOrderHistory
+import id.tinyspoon.app.ui.screens.product.ProductDetailScreen
 import id.tinyspoon.app.ui.screens.product.Review
+import id.tinyspoon.app.ui.screens.product.ReviewScreen
+import id.tinyspoon.app.ui.screens.product.SellerCertificateScreen
 import id.tinyspoon.app.ui.screens.product.seedReviewsFor
 import id.tinyspoon.app.ui.screens.product.withRatingsFrom
 import id.tinyspoon.app.ui.screens.profile.AboutScreen
 import id.tinyspoon.app.ui.screens.profile.AddressScreen
+import id.tinyspoon.app.ui.screens.profile.FavoritesScreen
 import id.tinyspoon.app.ui.screens.profile.NotificationPrefs
 import id.tinyspoon.app.ui.screens.profile.NotificationSettingsScreen
+import id.tinyspoon.app.ui.screens.profile.ProfileScreen
 import id.tinyspoon.app.ui.screens.profile.dummyAddresses
 import id.tinyspoon.app.ui.screens.profile.withDefault
 import id.tinyspoon.app.ui.screens.profile.withSaved
 import id.tinyspoon.app.ui.screens.profile.withoutAddress
+import id.tinyspoon.app.ui.screens.seller.OrderStatus
+import id.tinyspoon.app.ui.screens.seller.SellerDashboardScreen
+import id.tinyspoon.app.ui.screens.seller.SellerOrder
+import id.tinyspoon.app.ui.screens.seller.SellerOrdersScreen
+import id.tinyspoon.app.ui.screens.seller.SellerPendingScreen
+import id.tinyspoon.app.ui.screens.seller.SellerProductsScreen
 import id.tinyspoon.app.ui.screens.seller.SellerShopProfileScreen
+import id.tinyspoon.app.ui.screens.seller.ShopProfile
+import id.tinyspoon.app.ui.screens.seller.dummySellerOrders
 import id.tinyspoon.app.ui.screens.seller.dummyShops
+import id.tinyspoon.app.ui.theme.TinySpoonTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
 import java.util.UUID
 import kotlinx.coroutines.delay
 
@@ -99,20 +105,23 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS, SELLER_ORDERS, FAVORITES, ADDRESSES, NOTIFICATION_SETTINGS, ABOUT, SELLER_SHOP
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE,
+    ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS,
+    SELLER_ORDERS, FAVORITES, ADDRESSES, NOTIFICATION_SETTINGS, ABOUT, SELLER_SHOP,
+    SELLER_PENDING, ADMIN_DASHBOARD
 }
 
 @Composable
 fun AppNavigation() {
     var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
+    var accounts by remember { mutableStateOf(dummyAccounts) }
+    var currentUser by remember { mutableStateOf<UserAccount?>(null) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
     val seedReviews = remember { seedReviewsFor(dummyProducts) }
     var reviews by remember { mutableStateOf(seedReviews) }
     var products by remember { mutableStateOf(withRatingsFrom(dummyProducts, seedReviews)) }
     var sellerOrders by remember { mutableStateOf(dummySellerOrders) }
-    val buyerName = "Gilbert"
-    val currentSellerName = "Dapur Bunda"
     var selectedOrderId by remember { mutableStateOf<String?>(null) }
     var trackingBackTo by remember { mutableStateOf(Screen.HOME) }
     var favoriteIds by remember { mutableStateOf(setOf<String>()) }
@@ -123,9 +132,35 @@ fun AppNavigation() {
     var appRating by remember { mutableStateOf(0) }
     var shops by remember { mutableStateOf(dummyShops) }
     val context = LocalContext.current
+
+    val buyerName = currentUser?.takeIf { it.role == UserRole.BUYER }?.name ?: ""
+    val currentSellerName = currentUser?.takeIf { it.role == UserRole.SELLER }?.shopName ?: ""
     val favoriteProducts = products.filter { it.id in favoriteIds }
+
+    fun enterSession(user: UserAccount) {
+        currentUser = user
+        cartItems = emptyList()
+        favoriteIds = emptySet()
+        notifPrefs = NotificationPrefs()
+        appRating = 0
+        addresses = if (user.id == "acc-buyer-1") dummyAddresses else emptyList()
+        currentScreen = when (user.role) {
+            UserRole.BUYER -> Screen.HOME
+            UserRole.SELLER ->
+                if (user.sellerStatus == SellerStatus.APPROVED) Screen.SELLER_DASHBOARD
+                else Screen.SELLER_PENDING
+            UserRole.ADMIN -> Screen.ADMIN_DASHBOARD
+        }
+    }
+
+    fun logout() {
+        currentUser = null
+        currentScreen = Screen.AUTH
+    }
+
     val backTarget: Screen? = when (currentScreen) {
-        Screen.SPLASH, Screen.ONBOARDING, Screen.AUTH, Screen.HOME -> null
+        Screen.SPLASH, Screen.ONBOARDING, Screen.AUTH, Screen.HOME,
+        Screen.SELLER_DASHBOARD, Screen.SELLER_PENDING, Screen.ADMIN_DASHBOARD -> null
         Screen.PRODUCT_DETAIL -> detailBackTo
         Screen.CART -> cartBackTo
         Screen.CHECKOUT -> Screen.CART
@@ -133,7 +168,7 @@ fun AppNavigation() {
         Screen.ORDER_TRACKING -> trackingBackTo
         Screen.PROFILE -> Screen.HOME
         Screen.ORDER_HISTORY, Screen.FAVORITES, Screen.ADDRESSES,
-        Screen.NOTIFICATION_SETTINGS, Screen.ABOUT, Screen.SELLER_DASHBOARD -> Screen.PROFILE
+        Screen.NOTIFICATION_SETTINGS, Screen.ABOUT -> Screen.PROFILE
         Screen.SELLER_PRODUCTS, Screen.SELLER_ORDERS, Screen.SELLER_SHOP -> Screen.SELLER_DASHBOARD
     }
 
@@ -151,7 +186,49 @@ fun AppNavigation() {
         )
 
         Screen.AUTH -> AuthScreen(
-            onAuthSuccess = { currentScreen = Screen.HOME }
+            onLogin = { email, password ->
+                val account = accounts.find {
+                    it.email.equals(email.trim(), ignoreCase = true) && it.password == password
+                }
+                if (account == null) {
+                    "Email atau password salah"
+                } else {
+                    enterSession(account)
+                    null
+                }
+            },
+            onRegister = { name, email, password, role, shopName ->
+                val trimmedShop = shopName.trim()
+                when {
+                    accounts.any { it.email.equals(email.trim(), ignoreCase = true) } ->
+                        "Email sudah terdaftar"
+                    role == UserRole.SELLER && shops.keys.any { it.equals(trimmedShop, ignoreCase = true) } ->
+                        "Nama toko sudah dipakai"
+                    else -> {
+                        val account = UserAccount(
+                            id = UUID.randomUUID().toString(),
+                            name = name.trim(),
+                            email = email.trim(),
+                            password = password,
+                            role = role,
+                            shopName = if (role == UserRole.SELLER) trimmedShop else null,
+                            sellerStatus = if (role == UserRole.SELLER) SellerStatus.PENDING else null
+                        )
+                        accounts = accounts + account
+                        if (role == UserRole.SELLER) {
+                            shops = shops + (trimmedShop to ShopProfile(
+                                name = trimmedShop,
+                                description = "",
+                                address = "",
+                                phone = "",
+                                openHours = ""
+                            ))
+                        }
+                        enterSession(account)
+                        null
+                    }
+                }
+            }
         )
 
         Screen.HOME -> HomeScreen(
@@ -165,12 +242,14 @@ fun AppNavigation() {
         )
 
         Screen.PROFILE -> ProfileScreen(
+            userName = currentUser?.name ?: "",
+            userEmail = currentUser?.email ?: "",
             orderCount = sellerOrders.count { it.customerName == buyerName } + dummyOrderHistory.size,
             reviewCount = reviews.count { it.userName == buyerName },
             favoriteCount = favoriteProducts.size,
             appRating = appRating,
             onBack = { currentScreen = Screen.HOME },
-            onLogout = { currentScreen = Screen.AUTH },
+            onLogout = { logout() },
             onOrderHistoryClick = { currentScreen = Screen.ORDER_HISTORY },
             onFavoritesClick = { currentScreen = Screen.FAVORITES },
             onAddressesClick = { currentScreen = Screen.ADDRESSES },
@@ -179,8 +258,7 @@ fun AppNavigation() {
             onSubmitAppRating = { rating, _ ->
                 appRating = rating
                 Toast.makeText(context, "Terima kasih atas penilaianmu!", Toast.LENGTH_SHORT).show()
-            },
-            onSellerDashboardClick = { currentScreen = Screen.SELLER_DASHBOARD }
+            }
         )
 
         Screen.ADDRESSES -> AddressScreen(
@@ -280,7 +358,7 @@ fun AppNavigation() {
             }
             OrderTrackingScreen(
                 orderId = selectedOrderId ?: "-",
-                sellerName = order?.sellerName ?: currentSellerName,
+                sellerName = order?.sellerName ?: "Dapur Bunda",
                 status = order?.status ?: OrderStatus.DONE,
                 onBack = { currentScreen = trackingBackTo }
             )
@@ -347,9 +425,21 @@ fun AppNavigation() {
             )
         }
 
+        Screen.SELLER_PENDING -> SellerPendingScreen(
+            shopName = currentSellerName,
+            ownerName = currentUser?.name ?: "",
+            onLogout = { logout() }
+        )
+
+        Screen.ADMIN_DASHBOARD -> AdminDashboardScreen(
+            accounts = accounts,
+            onLogout = { logout() }
+        )
+
         Screen.SELLER_DASHBOARD -> SellerDashboardScreen(
             orders = sellerOrders.filter { it.sellerName == currentSellerName },
-            onBack = { currentScreen = Screen.PROFILE },
+            shopName = currentSellerName,
+            onLogout = { logout() },
             onManageProducts = { currentScreen = Screen.SELLER_PRODUCTS },
             onManageOrders = { currentScreen = Screen.SELLER_ORDERS },
             onSellerProfile = { currentScreen = Screen.SELLER_SHOP }
@@ -366,7 +456,7 @@ fun AppNavigation() {
         )
 
         Screen.SELLER_PRODUCTS -> SellerProductsScreen(
-            sellerName = "Dapur Bunda",
+            sellerName = currentSellerName,
             products = products,
             onBack = { currentScreen = Screen.SELLER_DASHBOARD },
             onSaveProduct = { saved ->
@@ -460,7 +550,8 @@ private fun reorderItems(
 
 @Composable
 fun SplashScreen(
-    onFinished: () -> Unit) {
+    onFinished: () -> Unit
+) {
     val brandColor = Color(0xFFFF6B35)
 
     LaunchedEffect(Unit) {

@@ -27,7 +27,8 @@ private fun formatRupiahCompact(amount: Int): String = when {
 @Composable
 fun SellerDashboardScreen(
     orders: List<SellerOrder>,
-    onBack: () -> Unit,
+    shopName: String,
+    onLogout: () -> Unit,
     onManageProducts: () -> Unit,
     onManageOrders: () -> Unit,
     onSellerProfile: () -> Unit
@@ -58,19 +59,6 @@ fun SellerDashboardScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                            .clickable { onBack() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Kembali",
-                            tint = Color.White
-                        )
-                    }
                     Column {
                         Text(
                             text = "Dashboard Seller",
@@ -79,7 +67,7 @@ fun SellerDashboardScreen(
                             color = Color.White
                         )
                         Text(
-                            text = "Dapur Bunda",
+                            text = shopName,
                             fontSize = 12.sp,
                             color = Color.White.copy(alpha = 0.8f)
                         )
@@ -232,6 +220,26 @@ fun SellerDashboardScreen(
                             )
                         }
                     }
+                }
+            }
+
+            item {
+                Button(
+                    onClick = onLogout,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red.copy(alpha = 0.1f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "Keluar",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Red
+                    )
                 }
             }
         }

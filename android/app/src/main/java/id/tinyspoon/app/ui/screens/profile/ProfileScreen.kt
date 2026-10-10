@@ -23,6 +23,8 @@ import id.tinyspoon.app.ui.theme.*
 
 @Composable
 fun ProfileScreen(
+    userName: String,
+    userEmail: String,
     orderCount: Int,
     reviewCount: Int,
     favoriteCount: Int = 0,
@@ -34,8 +36,7 @@ fun ProfileScreen(
     onAddressesClick: () -> Unit,
     onNotificationsClick: () -> Unit,
     onAboutClick: () -> Unit,
-    onSubmitAppRating: (rating: Int, feedback: String) -> Unit,
-    onSellerDashboardClick: () -> Unit
+    onSubmitAppRating: (rating: Int, feedback: String) -> Unit
 ) {
     val scrollState = rememberScrollState()
     var showRatingDialog by remember { mutableStateOf(false) }
@@ -113,7 +114,7 @@ fun ProfileScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "G",
+                            text = userName.take(1).uppercase(),
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -123,13 +124,13 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = "Gilbert",
+                        text = userName,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
                     Text(
-                        text = "gilbert@email.com",
+                        text = userEmail,
                         fontSize = 14.sp,
                         color = TextSecondary
                     )
@@ -208,22 +209,6 @@ fun ProfileScreen(
                         title = "Beri Rating",
                         subtitle = if (appRating > 0) "Penilaianmu: $appRating ⭐" else "Bantu kami berkembang",
                         onClick = { showRatingDialog = true }
-                    )
-                }
-            }
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(8.dp)) {
-                    ProfileMenuItem(
-                        icon = Icons.Default.ShoppingCart,
-                        title = "Dashboard Seller",
-                        subtitle = "Kelola toko dan produkmu",
-                        onClick = onSellerDashboardClick
                     )
                 }
             }

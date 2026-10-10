@@ -3,8 +3,10 @@ package id.tinyspoon.app.ui.screens.auth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,30 +16,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import id.tinyspoon.app.ui.screens.home.CategoryChip
 import id.tinyspoon.app.ui.theme.*
 
 @Composable
 fun AuthScreen(
-    onAuthSuccess: () -> Unit
-){
-    var isLogin by remember{ mutableStateOf(true)}
+    onLogin: (email: String, password: String) -> String?,
+    onRegister: (name: String, email: String, password: String, role: UserRole, shopName: String) -> String?
+) {
+    var isLogin by remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundCream)
-    ){
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)
                 .background(OrangePrimary),
             contentAlignment = Alignment.Center
-        ){
-            Column(horizontalAlignment = Alignment.CenterHorizontally){
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "\uD83E\uDD44",
                     fontSize = 48.sp
@@ -50,8 +55,7 @@ fun AuthScreen(
                     color = Color.White
                 )
                 Text(
-                    text = if (isLogin) "Masuk ke akun kamu"
-                                else "Buat akun baru",
+                    text = if (isLogin) "Masuk ke akun kamu" else "Buat akun baru",
                     fontSize = 14.sp,
                     color = Color.White.copy(alpha = 0.8f)
                 )
@@ -94,12 +98,14 @@ fun AuthScreen(
                 }
 
                 if (isLogin) {
-                    LoginForm(onLoginClick = onAuthSuccess)
+                    LoginForm(onLogin = onLogin)
                 } else {
-                    RegisterForm(onRegisterClick = onAuthSuccess)
+                    RegisterForm(onRegister = onRegister)
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
@@ -130,13 +136,15 @@ fun TabButton(
 }
 
 @Composable
-fun LoginForm(onLoginClick: () -> Unit) {
+fun LoginForm(onLogin: (String, String) -> String?) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var emailError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
+    var formError by remember { mutableStateOf<String?>(null) }
     var showForgotPassword by remember { mutableStateOf(false) }
+    var showDemo by remember { mutableStateOf(false) }
 
     fun validate(): Boolean {
         var isValid = true
@@ -174,6 +182,7 @@ fun LoginForm(onLoginClick: () -> Unit) {
             onValueChange = {
                 email = it
                 emailError = null
+                formError = null
             },
             label = "Email",
             keyboardType = KeyboardType.Email,
@@ -185,6 +194,7 @@ fun LoginForm(onLoginClick: () -> Unit) {
             onValueChange = {
                 password = it
                 passwordError = null
+                formError = null
             },
             label = "Password",
             isPassword = true,
@@ -204,12 +214,78 @@ fun LoginForm(onLoginClick: () -> Unit) {
                 .padding(vertical = 4.dp)
         )
 
+        if (formError != null) {
+            Text(
+                text = formError!!,
+                color = Color.Red,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+        }
+
         Spacer(modifier = Modifier.height(4.dp))
 
         TinySpoonButton(
             text = "Masuk",
-            onClick = { if (validate()) onLoginClick() }
+            onClick = {
+                if (validate()) {
+                    formError = onLogin(email, password)
+                }
+            }
         )
+
+        Text(
+            text = if (showDemo) "Sembunyikan akun demo" else "Lihat akun demo",
+            color = OrangePrimary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .clickable { showDemo = !showDemo }
+                .padding(vertical = 8.dp)
+        )
+
+        if (showDemo) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(OrangePrimaryLight, RoundedCornerShape(12.dp))
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "Ketuk akun untuk mengisi otomatis",
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+                dummyAccounts.forEach { account ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                email = account.email
+                                password = account.password
+                                emailError = null
+                                passwordError = null
+                                formError = null
+                            }
+                    ) {
+                        Text(
+                            text = account.role.label +
+                                    (account.shopName?.let { " • $it" } ?: ""),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "${account.email} / ${account.password}",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -293,16 +369,23 @@ fun ForgotPasswordDialog(
 }
 
 @Composable
-fun RegisterForm(onRegisterClick: () -> Unit) {
+fun RegisterForm(
+    onRegister: (String, String, String, UserRole, String) -> String?
+) {
+    var role by remember { mutableStateOf(UserRole.BUYER) }
     var name by remember { mutableStateOf("") }
+    var shopName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+
     var nameError by remember { mutableStateOf<String?>(null) }
+    var shopError by remember { mutableStateOf<String?>(null) }
     var emailError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
     var confirmPasswordError by remember { mutableStateOf<String?>(null) }
+    var formError by remember { mutableStateOf<String?>(null) }
 
     fun validate(): Boolean {
         var isValid = true
@@ -310,11 +393,23 @@ fun RegisterForm(onRegisterClick: () -> Unit) {
         if (name.isBlank()) {
             nameError = "Nama tidak boleh kosong"
             isValid = false
-        } else if (name.length < 3) {
+        } else if (name.trim().length < 3) {
             nameError = "Nama minimal 3 karakter"
             isValid = false
         } else {
             nameError = null
+        }
+
+        if (role == UserRole.SELLER) {
+            if (shopName.isBlank()) {
+                shopError = "Nama toko tidak boleh kosong"
+                isValid = false
+            } else if (shopName.trim().length < 3) {
+                shopError = "Nama toko minimal 3 karakter"
+                isValid = false
+            } else {
+                shopError = null
+            }
         }
 
         if (email.isBlank()) {
@@ -354,21 +449,62 @@ fun RegisterForm(onRegisterClick: () -> Unit) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = "Daftar sebagai",
+            fontSize = 13.sp,
+            color = TextSecondary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(UserRole.BUYER, UserRole.SELLER).forEach { option ->
+                CategoryChip(
+                    text = option.label,
+                    isSelected = role == option,
+                    onClick = {
+                        role = option
+                        formError = null
+                    }
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
         TinySpoonTextField(
             value = name,
             onValueChange = {
                 name = it
                 nameError = null
+                formError = null
             },
             label = "Nama lengkap",
             errorMessage = nameError
         )
+
+        if (role == UserRole.SELLER) {
+            TinySpoonTextField(
+                value = shopName,
+                onValueChange = {
+                    shopName = it
+                    shopError = null
+                    formError = null
+                },
+                label = "Nama toko",
+                errorMessage = shopError
+            )
+            Text(
+                text = "Akun penjual perlu diverifikasi admin sebelum bisa berjualan.",
+                fontSize = 11.sp,
+                color = TextSecondary,
+                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+            )
+        }
 
         TinySpoonTextField(
             value = email,
             onValueChange = {
                 email = it
                 emailError = null
+                formError = null
             },
             label = "Email",
             keyboardType = KeyboardType.Email,
@@ -380,6 +516,7 @@ fun RegisterForm(onRegisterClick: () -> Unit) {
             onValueChange = {
                 password = it
                 passwordError = null
+                formError = null
             },
             label = "Password",
             isPassword = true,
@@ -393,6 +530,7 @@ fun RegisterForm(onRegisterClick: () -> Unit) {
             onValueChange = {
                 confirmPassword = it
                 confirmPasswordError = null
+                formError = null
             },
             label = "Konfirmasi password",
             isPassword = true,
@@ -401,11 +539,24 @@ fun RegisterForm(onRegisterClick: () -> Unit) {
             errorMessage = confirmPasswordError
         )
 
+        if (formError != null) {
+            Text(
+                text = formError!!,
+                color = Color.Red,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+        }
+
         Spacer(modifier = Modifier.height(4.dp))
 
         TinySpoonButton(
             text = "Daftar",
-            onClick = { if (validate()) onRegisterClick() }
+            onClick = {
+                if (validate()) {
+                    formError = onRegister(name, email, password, role, shopName)
+                }
+            }
         )
     }
 }
