@@ -424,9 +424,14 @@ private fun ProductForm(
             isValid = false
         }
 
+        val nutritionLimits = listOf(40, 80, 40, 20)
         val nutritionValues = listOf(proteinText, carbsText, fatText, fiberText).map { it.toIntOrNull() }
-        if (nutritionValues.any { it == null || it !in 0..100 }) {
-            nutritionError = "Isi keempat nilai gizi dengan angka 0-100"
+        val outOfRange = nutritionValues.indices.any { i ->
+            val value = nutritionValues[i]
+            value == null || value !in 0..nutritionLimits[i]
+        }
+        if (outOfRange) {
+            nutritionError = "Isi angka wajar per porsi: protein maks 40g, karbohidrat 80g, lemak 40g, serat 20g"
             isValid = false
         } else if (nutritionValues.sumOf { it ?: 0 } == 0) {
             nutritionError = "Isi minimal satu nilai gizi lebih dari 0"
