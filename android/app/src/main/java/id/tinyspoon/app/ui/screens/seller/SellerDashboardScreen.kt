@@ -165,9 +165,9 @@ fun SellerDashboardScreen(
                         else "Lihat & proses pesanan",
                         onClick = onManageOrders
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    SellerShopCard(onClick = onSellerProfile)
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+                SellerShopCard(onClick = onSellerProfile)
             }
 
             item {
