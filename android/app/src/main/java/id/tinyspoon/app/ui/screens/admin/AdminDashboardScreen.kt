@@ -3,7 +3,6 @@ package id.tinyspoon.app.ui.screens.admin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,44 +11,51 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.clickable
 import id.tinyspoon.app.ui.screens.auth.SellerStatus
 import id.tinyspoon.app.ui.screens.auth.UserAccount
 import id.tinyspoon.app.ui.screens.auth.UserRole
-import id.tinyspoon.app.ui.screens.product.CertDetail
-import id.tinyspoon.app.ui.screens.product.SellerCertificate
-import id.tinyspoon.app.ui.screens.seller.ActionButton
+import id.tinyspoon.app.ui.screens.home.Product
+import id.tinyspoon.app.ui.screens.product.Review
+import id.tinyspoon.app.ui.screens.seller.OrderStatus
+import id.tinyspoon.app.ui.screens.seller.SellerMenuCard
+import id.tinyspoon.app.ui.screens.seller.SellerOrder
 import id.tinyspoon.app.ui.screens.seller.SellerStatCard
 import id.tinyspoon.app.ui.theme.*
+import java.util.Locale
+
+private fun formatAdminRupiah(amount: Int): String = when {
+    amount >= 1_000_000 -> "Rp ${"%.1f".format(Locale.US, amount / 1_000_000.0)}jt"
+    amount >= 1_000 -> "Rp ${amount / 1_000}K"
+    else -> "Rp $amount"
+}
 
 @Composable
 fun AdminDashboardScreen(
     accounts: List<UserAccount>,
-    certificates: Map<String, SellerCertificate>,
-    onApprove: (String) -> Unit,
-    onReject: (String, String) -> Unit,
+    products: List<Product>,
+    orders: List<SellerOrder>,
+    reviews: List<Review>,
+    onOpenVerification: () -> Unit,
+    onOpenUsers: () -> Unit,
     onLogout: () -> Unit
 ) {
     val buyers = accounts.count { it.role == UserRole.BUYER }
     val sellers = accounts.count { it.role == UserRole.SELLER }
-    val pendingSellers = accounts.filter {
+    val pending = accounts.count {
         it.role == UserRole.SELLER && it.sellerStatus == SellerStatus.PENDING
     }
-    var rejectTarget by remember { mutableStateOf<UserAccount?>(null) }
-
-    rejectTarget?.let { account ->
-        RejectDialog(
-            shopName = account.shopName ?: account.name,
-            onDismiss = { rejectTarget = null },
-            onConfirm = { reason ->
-                onReject(account.id, reason)
-                rejectTarget = null
-            }
-        )
-    }
+    val inactive = accounts.count { !it.isActive }
+    val doneOrders = orders.filter { it.status == OrderStatus.DONE }
+    val revenue = doneOrders.sumOf { it.total }
+    val averageRating =
+        if (reviews.isEmpty()) 0.0 else reviews.sumOf { it.rating }.toDouble() / reviews.size
+    val topSellers = doneOrders
+        .groupBy { it.sellerName }
+        .map { (shop, list) -> shop to list.sumOf { it.total } }
+        .sortedByDescending { it.second }
+        .take(3)
 
     Column(
         modifier = Modifier
@@ -85,7 +91,7 @@ fun AdminDashboardScreen(
         ) {
             item {
                 Text(
-                    text = "Ringkasan Akun",
+                    text = "Ringkasan Platform",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
@@ -109,76 +115,113 @@ fun AdminDashboardScreen(
                     )
                     SellerStatCard(
                         modifier = Modifier.weight(1f),
-                        emoji = "⏳",
-                        value = pendingSellers.size.toString(),
-                        label = "Menunggu Verifikasi"
+                        emoji = "🍱",
+                        value = products.size.toString(),
+                        label = "Produk"
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    SellerStatCard(
+                        modifier = Modifier.weight(1f),
+                        emoji = "📦",
+                        value = orders.size.toString(),
+                        label = "Pesanan"
+                    )
+                    SellerStatCard(
+                        modifier = Modifier.weight(1f),
+                        emoji = "✅",
+                        value = doneOrders.size.toString(),
+                        label = "Selesai"
+                    )
+                    SellerStatCard(
+                        modifier = Modifier.weight(1f),
+                        emoji = "💰",
+                        value = formatAdminRupiah(revenue),
+                        label = "Transaksi Selesai"
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    SellerStatCard(
+                        modifier = Modifier.weight(1f),
+                        emoji = "💬",
+                        value = reviews.size.toString(),
+                        label = "Ulasan"
+                    )
+                    SellerStatCard(
+                        modifier = Modifier.weight(1f),
+                        emoji = "⭐",
+                        value = String.format(Locale.US, "%.1f", averageRating),
+                        label = "Rata-rata Rating"
+                    )
+                    SellerStatCard(
+                        modifier = Modifier.weight(1f),
+                        emoji = "🚫",
+                        value = inactive.toString(),
+                        label = "Akun Nonaktif"
                     )
                 }
             }
 
             item {
                 Text(
-                    text = "Perlu Verifikasi (${pendingSellers.size})",
+                    text = "Kelola",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    SellerMenuCard(
+                        modifier = Modifier.weight(1f),
+                        emoji = "📜",
+                        title = "Verifikasi Seller",
+                        subtitle = if (pending > 0) "$pending menunggu" else "Tidak ada antrean",
+                        onClick = onOpenVerification
+                    )
+                    SellerMenuCard(
+                        modifier = Modifier.weight(1f),
+                        emoji = "👥",
+                        title = "Kelola Pengguna",
+                        subtitle = "${accounts.size} akun",
+                        onClick = onOpenUsers
+                    )
+                }
             }
 
-            if (pendingSellers.isEmpty()) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Tidak ada pengajuan yang menunggu verifikasi",
-                            fontSize = 13.sp,
-                            color = TextSecondary,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp)
+                            text = "Pesanan per Status",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
                         )
-                    }
-                }
-            } else {
-                items(pendingSellers, key = { "pending-${it.id}" }) { account ->
-                    val certificate = account.shopName?.let { certificates[it] }
-                    if (certificate != null) {
-                        VerificationCard(
-                            account = account,
-                            certificate = certificate,
-                            onApprove = { onApprove(account.id) },
-                            onReject = { rejectTarget = account }
-                        )
-                    } else {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = account.shopName ?: account.name,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
-                                )
-                                Text(
-                                    text = "${account.name} • ${account.email}",
-                                    fontSize = 12.sp,
-                                    color = TextSecondary
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "Belum mengirim sertifikat",
-                                    fontSize = 12.sp,
-                                    color = Color(0xFFFF9800),
-                                    fontWeight = FontWeight.Bold
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OrderStatus.values().forEach { status ->
+                                val count = orders.count { it.status == status }
+                                StatusBarRow(
+                                    label = status.label,
+                                    count = count,
+                                    total = orders.size,
+                                    color = Color(status.color)
                                 )
                             }
                         }
@@ -187,58 +230,68 @@ fun AdminDashboardScreen(
             }
 
             item {
-                Text(
-                    text = "Akun Terdaftar",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-            }
-
-            items(accounts, key = { "acc-${it.id}" }) { account ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Seller Teratas",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Berdasarkan transaksi selesai",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        if (topSellers.isEmpty()) {
                             Text(
-                                text = account.name,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = account.email,
-                                fontSize = 12.sp,
+                                text = "Belum ada transaksi selesai",
+                                fontSize = 13.sp,
                                 color = TextSecondary
                             )
-                            if (account.shopName != null) {
-                                Text(
-                                    text = "Toko: ${account.shopName}",
-                                    fontSize = 12.sp,
-                                    color = TextSecondary
-                                )
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                topSellers.forEachIndexed { index, (shop, amount) ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .background(OrangePrimaryLight, RoundedCornerShape(14.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = "${index + 1}",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = OrangePrimary
+                                            )
+                                        }
+                                        Text(
+                                            text = shop,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimary,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(
+                                            text = formatAdminRupiah(amount),
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = OrangePrimary
+                                        )
+                                    }
+                                }
                             }
-                        }
-                        Box(
-                            modifier = Modifier
-                                .background(OrangePrimaryLight, RoundedCornerShape(8.dp))
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = account.sellerStatus?.let { "${account.role.label} • ${it.label}" }
-                                    ?: account.role.label,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = OrangePrimary
-                            )
                         }
                     }
                 }
@@ -274,135 +327,46 @@ fun AdminDashboardScreen(
 }
 
 @Composable
-private fun VerificationCard(
-    account: UserAccount,
-    certificate: SellerCertificate,
-    onApprove: () -> Unit,
-    onReject: () -> Unit
+private fun StatusBarRow(
+    label: String,
+    count: Int,
+    total: Int,
+    color: Color
 ) {
-    Card(
+    val fraction = if (total == 0) 0f else (count.toFloat() / total).coerceIn(0f, 1f)
+
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = account.shopName ?: account.name,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = TextSecondary,
+            modifier = Modifier.width(64.dp)
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(10.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(Color(0xFFEEEEEE))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(color)
             )
-            Text(
-                text = "Pemilik: ${account.name} • ${account.email}",
-                fontSize = 12.sp,
-                color = TextSecondary
-            )
-
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 10.dp),
-                color = BorderOrange
-            )
-
-            CertDetail(label = "Jenis Sertifikat", value = certificate.certType)
-            CertDetail(label = "Nomor Sertifikat", value = certificate.certNumber)
-            CertDetail(label = "Diterbitkan Oleh", value = certificate.issuedBy)
-            CertDetail(label = "Tanggal Terbit", value = certificate.issuedDate)
-            CertDetail(label = "Berlaku Hingga", value = certificate.expiredDate)
-            CertDetail(label = "Dokumen", value = "📎 ${certificate.documentName}")
-
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 10.dp),
-                color = BorderOrange
-            )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ActionButton(
-                    text = "Tolak",
-                    color = Color.Red,
-                    onClick = onReject,
-                    modifier = Modifier.weight(1f)
-                )
-                Box(
-                    modifier = Modifier
-                        .weight(2f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF4CAF50))
-                        .clickable { onApprove() }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Setujui",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
-            }
         }
+        Text(
+            text = count.toString(),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary,
+            modifier = Modifier.width(24.dp)
+        )
     }
-}
-
-@Composable
-private fun RejectDialog(
-    shopName: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var reason by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (reason.trim().length < 5) {
-                        error = "Tulis alasan minimal 5 karakter"
-                    } else {
-                        onConfirm(reason.trim())
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-            ) {
-                Text("Tolak", color = Color.White)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Batal", color = TextSecondary)
-            }
-        },
-        title = {
-            Text("Tolak \"$shopName\"?", fontWeight = FontWeight.Bold, color = TextPrimary)
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "Alasan ini akan ditampilkan ke penjual supaya bisa memperbaiki dan mengirim ulang.",
-                    fontSize = 13.sp,
-                    color = TextSecondary
-                )
-                OutlinedTextField(
-                    value = reason,
-                    onValueChange = {
-                        reason = it
-                        error = null
-                    },
-                    label = { Text("Alasan penolakan") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    isError = error != null,
-                    colors = tinySpoonFieldColors(),
-                    minLines = 2
-                )
-                if (error != null) {
-                    Text(text = error!!, color = Color.Red, fontSize = 12.sp)
-                }
-            }
-        },
-        containerColor = Color.White,
-        shape = RoundedCornerShape(16.dp)
-    )
 }

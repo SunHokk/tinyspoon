@@ -182,15 +182,25 @@ fun SellerDashboardScreen(
                 }
             }
 
-            items(orders.take(3), key = { it.id }) { order ->
-                SellerOrderItem(
-                    orderId = order.id,
-                    customerName = order.customerName,
-                    items = order.items,
-                    total = order.total,
-                    status = order.status.label,
-                    statusColor = order.status.color
-                )
+            if (orders.isEmpty()) {
+                item {
+                    Text(
+                        text = "Belum ada pesanan masuk",
+                        fontSize = 13.sp,
+                        color = TextSecondary
+                    )
+                }
+            } else {
+                items(orders.take(3), key = { it.id }) { order ->
+                    SellerOrderItem(
+                        orderId = order.id,
+                        customerName = order.customerName,
+                        items = order.items,
+                        total = order.total,
+                        status = order.status.label,
+                        statusColor = order.status.color
+                    )
+                }
             }
 
             if (certificate != null) {

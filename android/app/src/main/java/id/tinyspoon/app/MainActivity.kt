@@ -76,6 +76,8 @@ import id.tinyspoon.app.ui.screens.seller.dummyShops
 import id.tinyspoon.app.ui.theme.TinySpoonTheme
 import id.tinyspoon.app.ui.screens.product.CertStatus
 import id.tinyspoon.app.ui.screens.product.dummyCertificates
+import id.tinyspoon.app.ui.screens.admin.AdminUsersScreen
+import id.tinyspoon.app.ui.screens.admin.AdminVerificationScreen
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -110,7 +112,7 @@ enum class Screen {
     SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE,
     ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS,
     SELLER_ORDERS, FAVORITES, ADDRESSES, NOTIFICATION_SETTINGS, ABOUT, SELLER_SHOP,
-    SELLER_PENDING, ADMIN_DASHBOARD
+    SELLER_PENDING, ADMIN_DASHBOARD, ADMIN_VERIFICATION, ADMIN_USERS
 }
 
 @Composable
@@ -138,7 +140,14 @@ fun AppNavigation() {
     val currentUser = accounts.find { it.id == currentUserId }
     val buyerName = currentUser?.takeIf { it.role == UserRole.BUYER }?.name ?: ""
     val currentSellerName = currentUser?.takeIf { it.role == UserRole.SELLER }?.shopName ?: ""
-    val favoriteProducts = products.filter { it.id in favoriteIds }
+
+    fun isSellerVisible(shopName: String): Boolean {
+        val owner = accounts.find { it.shopName == shopName } ?: return true
+        return owner.isActive && owner.sellerStatus == SellerStatus.APPROVED
+    }
+
+    val visibleProducts = products.filter { isSellerVisible(it.sellerName) }
+    val favoriteProducts = visibleProducts.filter { it.id in favoriteIds }
 
     fun enterSession(user: UserAccount) {
         currentUserId = user.id
@@ -172,6 +181,7 @@ fun AppNavigation() {
         Screen.PROFILE -> Screen.HOME
         Screen.ORDER_HISTORY, Screen.FAVORITES, Screen.ADDRESSES,
         Screen.NOTIFICATION_SETTINGS, Screen.ABOUT -> Screen.PROFILE
+        Screen.ADMIN_VERIFICATION, Screen.ADMIN_USERS -> Screen.ADMIN_DASHBOARD
         Screen.SELLER_PRODUCTS, Screen.SELLER_ORDERS, Screen.SELLER_SHOP -> Screen.SELLER_DASHBOARD
     }
 
@@ -195,6 +205,8 @@ fun AppNavigation() {
                 }
                 if (account == null) {
                     "Email atau password salah"
+                } else if (!account.isActive) {
+                    "Akun ini dinonaktifkan oleh admin"
                 } else {
                     enterSession(account)
                     null
@@ -235,7 +247,7 @@ fun AppNavigation() {
         )
 
         Screen.HOME -> HomeScreen(
-            products = products,
+            products = visibleProducts,
             onProductClick = { product ->
                 selectedProduct = product
                 detailBackTo = Screen.HOME
@@ -449,6 +461,31 @@ fun AppNavigation() {
 
         Screen.ADMIN_DASHBOARD -> AdminDashboardScreen(
             accounts = accounts,
+            products = products,
+            orders = sellerOrders,
+            reviews = reviews,
+            onOpenVerification = { currentScreen = Screen.ADMIN_VERIFICATION },
+            onOpenUsers = { currentScreen = Screen.ADMIN_USERS },
+            onLogout = { logout() }
+        )
+
+        Screen.ADMIN_USERS -> AdminUsersScreen(
+            accounts = accounts,
+            onToggleActive = { accountId, active ->
+                accounts = accounts.map {
+                    if (it.id == accountId) it.copy(isActive = active) else it
+                }
+                Toast.makeText(
+                    context,
+                    if (active) "Akun diaktifkan" else "Akun dinonaktifkan",
+                    Toast.LENGTH_SHORT
+                ).show()
+            },
+            onBack = { currentScreen = Screen.ADMIN_DASHBOARD }
+        )
+
+        Screen.ADMIN_VERIFICATION -> AdminVerificationScreen(
+            accounts = accounts,
             certificates = certificates,
             onApprove = { accountId ->
                 val shop = accounts.find { it.id == accountId }?.shopName
@@ -472,13 +509,12 @@ fun AppNavigation() {
                 }
                 Toast.makeText(context, "Pengajuan ditolak", Toast.LENGTH_SHORT).show()
             },
-            onLogout = { logout() }
+            onBack = { currentScreen = Screen.ADMIN_DASHBOARD }
         )
 
         Screen.SELLER_DASHBOARD -> SellerDashboardScreen(
             orders = sellerOrders.filter { it.sellerName == currentSellerName },
             shopName = currentSellerName,
-            certificate = certificates[currentSellerName],
             onLogout = { logout() },
             onManageProducts = { currentScreen = Screen.SELLER_PRODUCTS },
             onManageOrders = { currentScreen = Screen.SELLER_ORDERS },

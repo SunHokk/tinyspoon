@@ -20,7 +20,8 @@ data class UserAccount(
     val role: UserRole,
     val shopName: String? = null,
     val sellerStatus: SellerStatus? = null,
-    val rejectionReason: String? = null
+    val rejectionReason: String? = null,
+    val isActive: Boolean = true
 )
 
 // Data demo. Password tersimpan polos hanya sementara; backend nanti menyimpan hash.
