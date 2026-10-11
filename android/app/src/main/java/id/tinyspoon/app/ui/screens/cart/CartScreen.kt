@@ -29,6 +29,7 @@ data class CartItem(
 fun CartScreen(
     cartItems: List<CartItem>,
     onBack: () -> Unit,
+    onBrowseProducts: () -> Unit,
     onRemoveItem: (CartItem) -> Unit,
     onQuantityChange: (CartItem, Int) -> Unit,
     onCheckout: () -> Unit
@@ -95,7 +96,7 @@ fun CartScreen(
                         color = TextSecondary
                     )
                     Button(
-                        onClick = onBack,
+                        onClick = onBrowseProducts,
                         colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                         shape = RoundedCornerShape(12.dp)
                     ) {

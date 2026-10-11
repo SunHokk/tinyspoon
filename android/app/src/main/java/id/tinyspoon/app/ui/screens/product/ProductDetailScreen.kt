@@ -12,19 +12,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.theme.*
+import id.tinyspoon.app.ui.screens.home.hasNutrition
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProductDetailScreen(
     product: Product,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onBack: () -> Unit,
     onAddToCart: () -> Unit,
     onSellerClick: () -> Unit,
@@ -68,6 +71,26 @@ fun ProductDetailScreen(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Kembali",
                         tint = TextPrimary
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .statusBarsPadding()
+                        .padding(16.dp)
+                        .size(40.dp)
+                        .background(
+                            color = Color.White,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable { onToggleFavorite() }
+                        .align(Alignment.TopEnd),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Hapus dari favorit" else "Tambah ke favorit",
+                        tint = if (isFavorite) OrangePrimary else TextPrimary
                     )
                 }
             }
@@ -118,7 +141,7 @@ fun ProductDetailScreen(
                             )
                         }
                         Text(
-                            text = "${product.rating} / 5.0",
+                            text = if (product.rating > 0f) "${product.rating} / 5.0" else " Belum ada ulasan",
                             fontSize = 14.sp,
                             color = TextSecondary
                         )
@@ -140,20 +163,24 @@ fun ProductDetailScreen(
                 HorizontalDivider(color = BorderOrange)
 
                 Text(
-                    text = "Informasi Nutrisi",
+                    text = "Informasi Nutrisi (per porsi)",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    NutritionItem(label = "Protein", value = "5g")
-                    NutritionItem(label = "Karbohidrat", value = "20g")
-                    NutritionItem(label = "Lemak", value = "3g")
-                    NutritionItem(label = "Serat", value = "2g")
+                if (product.hasNutrition) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        NutritionItem(label = "Protein", value = "${product.protein}g")
+                        NutritionItem(label = "Karbohidrat", value = "${product.carbs}g")
+                        NutritionItem(label = "Lemak", value = "${product.fat}g")
+                        NutritionItem(label = "Serat", value = "${product.fiber}g")
+                    }
+                } else {
+                    DetailChip(text = "ℹ️ Informasi gizi belum diisi seller")
                 }
 
                 HorizontalDivider(color = BorderOrange)

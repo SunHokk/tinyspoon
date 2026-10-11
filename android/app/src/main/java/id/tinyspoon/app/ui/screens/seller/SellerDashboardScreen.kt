@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.tinyspoon.app.ui.theme.*
+import id.tinyspoon.app.ui.screens.product.SellerCertificate
 
 private fun formatRupiahCompact(amount: Int): String = when {
     amount >= 1_000_000 -> "Rp ${"%.1f".format(amount / 1_000_000.0)}jt"
@@ -27,7 +28,9 @@ private fun formatRupiahCompact(amount: Int): String = when {
 @Composable
 fun SellerDashboardScreen(
     orders: List<SellerOrder>,
-    onBack: () -> Unit,
+    shopName: String,
+    certificate: SellerCertificate? = null,
+    onLogout: () -> Unit,
     onManageProducts: () -> Unit,
     onManageOrders: () -> Unit,
     onSellerProfile: () -> Unit
@@ -58,19 +61,6 @@ fun SellerDashboardScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                            .clickable { onBack() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Kembali",
-                            tint = Color.White
-                        )
-                    }
                     Column {
                         Text(
                             text = "Dashboard Seller",
@@ -79,7 +69,7 @@ fun SellerDashboardScreen(
                             color = Color.White
                         )
                         Text(
-                            text = "Dapur Bunda",
+                            text = shopName,
                             fontSize = 12.sp,
                             color = Color.White.copy(alpha = 0.8f)
                         )
@@ -166,6 +156,8 @@ fun SellerDashboardScreen(
                         onClick = onManageOrders
                     )
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+                SellerShopCard(onClick = onSellerProfile)
             }
 
             item {
@@ -190,46 +182,78 @@ fun SellerDashboardScreen(
                 }
             }
 
-            items(orders.take(3), key = { it.id }) { order ->
-                SellerOrderItem(
-                    orderId = order.id,
-                    customerName = order.customerName,
-                    items = order.items,
-                    total = order.total,
-                    status = order.status.label,
-                    statusColor = order.status.color
-                )
+            if (orders.isEmpty()) {
+                item {
+                    Text(
+                        text = "Belum ada pesanan masuk",
+                        fontSize = 13.sp,
+                        color = TextSecondary
+                    )
+                }
+            } else {
+                items(orders.take(3), key = { it.id }) { order ->
+                    SellerOrderItem(
+                        orderId = order.id,
+                        customerName = order.customerName,
+                        items = order.items,
+                        total = order.total,
+                        status = order.status.label,
+                        statusColor = order.status.color
+                    )
+                }
+            }
+
+            if (certificate != null) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(text = "📜", fontSize = 32.sp)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Sertifikat Aktif",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E7D32)
+                                )
+                                Text(
+                                    text = "${certificate.certNumber} • berlaku hingga ${certificate.expiredDate}",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF388E3C)
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
+                Button(
+                    onClick = onLogout,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red.copy(alpha = 0.1f)
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(text = "📜", fontSize = 32.sp)
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Sertifikat BPOM Aktif",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF2E7D32)
-                            )
-                            Text(
-                                text = "Berlaku hingga 31 Desember 2027",
-                                fontSize = 12.sp,
-                                color = Color(0xFF388E3C)
-                            )
-                        }
-                    }
+                    Text(
+                        text = "Keluar",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Red
+                    )
                 }
             }
         }
@@ -309,6 +333,47 @@ fun SellerMenuCard(
                 color = TextSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
+        }
+    }
+}
+
+@Composable
+fun SellerShopCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(OrangePrimaryLight, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "🏪", fontSize = 20.sp)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Profil Toko",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "Deskripsi, alamat, telepon, dan jam buka",
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+            }
+            Text(text = "→", fontSize = 16.sp, color = TextSecondary)
         }
     }
 }

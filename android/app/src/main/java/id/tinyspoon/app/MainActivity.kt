@@ -1,7 +1,9 @@
 package id.tinyspoon.app
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,39 +22,66 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.Text
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import id.tinyspoon.app.ui.screens.onboarding.OnboardingScreen
-import id.tinyspoon.app.ui.theme.TinySpoonTheme
+import id.tinyspoon.app.ui.screens.admin.AdminDashboardScreen
 import id.tinyspoon.app.ui.screens.auth.AuthScreen
-import id.tinyspoon.app.ui.screens.home.HomeScreen
-import id.tinyspoon.app.ui.screens.product.ProductDetailScreen
-import id.tinyspoon.app.ui.screens.home.Product
+import id.tinyspoon.app.ui.screens.auth.SellerStatus
+import id.tinyspoon.app.ui.screens.auth.UserAccount
+import id.tinyspoon.app.ui.screens.auth.UserRole
+import id.tinyspoon.app.ui.screens.auth.dummyAccounts
 import id.tinyspoon.app.ui.screens.cart.CartItem
 import id.tinyspoon.app.ui.screens.cart.CartScreen
-import id.tinyspoon.app.ui.screens.order.CheckoutScreen
-import id.tinyspoon.app.ui.screens.order.OrderTrackingScreen
-import id.tinyspoon.app.ui.screens.profile.ProfileScreen
-import id.tinyspoon.app.ui.screens.order.OrderHistoryScreen
-import id.tinyspoon.app.ui.screens.product.SellerCertificateScreen
-import id.tinyspoon.app.ui.screens.product.ReviewScreen
-import id.tinyspoon.app.ui.screens.seller.SellerDashboardScreen
+import id.tinyspoon.app.ui.screens.home.HomeScreen
+import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.screens.home.dummyProducts
-import id.tinyspoon.app.ui.screens.seller.SellerProductsScreen
-import id.tinyspoon.app.ui.screens.seller.SellerOrdersScreen
-import id.tinyspoon.app.ui.screens.seller.dummySellerOrders
+import id.tinyspoon.app.ui.screens.onboarding.OnboardingScreen
+import id.tinyspoon.app.ui.screens.order.CheckoutScreen
 import id.tinyspoon.app.ui.screens.order.DELIVERY_FEE_PER_SELLER
+import id.tinyspoon.app.ui.screens.order.OrderHistoryScreen
+import id.tinyspoon.app.ui.screens.order.OrderTrackingScreen
+import id.tinyspoon.app.ui.screens.order.dummyOrderHistory
+import id.tinyspoon.app.ui.screens.product.ProductDetailScreen
+import id.tinyspoon.app.ui.screens.product.Review
+import id.tinyspoon.app.ui.screens.product.ReviewScreen
+import id.tinyspoon.app.ui.screens.product.SellerCertificateScreen
+import id.tinyspoon.app.ui.screens.product.seedReviewsFor
+import id.tinyspoon.app.ui.screens.product.withRatingsFrom
+import id.tinyspoon.app.ui.screens.profile.AboutScreen
+import id.tinyspoon.app.ui.screens.profile.AddressScreen
+import id.tinyspoon.app.ui.screens.profile.FavoritesScreen
+import id.tinyspoon.app.ui.screens.profile.NotificationPrefs
+import id.tinyspoon.app.ui.screens.profile.NotificationSettingsScreen
+import id.tinyspoon.app.ui.screens.profile.ProfileScreen
+import id.tinyspoon.app.ui.screens.profile.dummyAddresses
+import id.tinyspoon.app.ui.screens.profile.withDefault
+import id.tinyspoon.app.ui.screens.profile.withSaved
+import id.tinyspoon.app.ui.screens.profile.withoutAddress
 import id.tinyspoon.app.ui.screens.seller.OrderStatus
+import id.tinyspoon.app.ui.screens.seller.SellerDashboardScreen
 import id.tinyspoon.app.ui.screens.seller.SellerOrder
+import id.tinyspoon.app.ui.screens.seller.SellerOrdersScreen
+import id.tinyspoon.app.ui.screens.seller.SellerPendingScreen
+import id.tinyspoon.app.ui.screens.seller.SellerProductsScreen
+import id.tinyspoon.app.ui.screens.seller.SellerShopProfileScreen
+import id.tinyspoon.app.ui.screens.seller.ShopProfile
+import id.tinyspoon.app.ui.screens.seller.dummySellerOrders
+import id.tinyspoon.app.ui.screens.seller.dummyShops
+import id.tinyspoon.app.ui.theme.TinySpoonTheme
+import id.tinyspoon.app.ui.screens.product.CertStatus
+import id.tinyspoon.app.ui.screens.product.dummyCertificates
+import id.tinyspoon.app.ui.screens.admin.AdminUsersScreen
+import id.tinyspoon.app.ui.screens.admin.AdminVerificationScreen
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.UUID
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -79,20 +109,85 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE, ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS, SELLER_ORDERS
+    SPLASH, ONBOARDING, AUTH, HOME, PRODUCT_DETAIL, CART, CHECKOUT, SELLER_CERTIFICATE,
+    ORDER_TRACKING, PROFILE, ORDER_HISTORY, REVIEW, SELLER_DASHBOARD, SELLER_PRODUCTS,
+    SELLER_ORDERS, FAVORITES, ADDRESSES, NOTIFICATION_SETTINGS, ABOUT, SELLER_SHOP,
+    SELLER_PENDING, ADMIN_DASHBOARD, ADMIN_VERIFICATION, ADMIN_USERS
 }
 
 @Composable
 fun AppNavigation() {
     var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
+    var accounts by remember { mutableStateOf(dummyAccounts) }
+    var currentUserId by remember { mutableStateOf<String?>(null) }
+    var certificates by remember { mutableStateOf(dummyCertificates) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
-    var products by remember { mutableStateOf(dummyProducts) }
+    val seedReviews = remember { seedReviewsFor(dummyProducts) }
+    var reviews by remember { mutableStateOf(seedReviews) }
+    var products by remember { mutableStateOf(withRatingsFrom(dummyProducts, seedReviews)) }
     var sellerOrders by remember { mutableStateOf(dummySellerOrders) }
-    val buyerName = "Gilbert"
-    val currentSellerName = "Dapur Bunda"
     var selectedOrderId by remember { mutableStateOf<String?>(null) }
     var trackingBackTo by remember { mutableStateOf(Screen.HOME) }
+    var favoriteIds by remember { mutableStateOf(setOf<String>()) }
+    var detailBackTo by remember { mutableStateOf(Screen.HOME) }
+    var cartBackTo by remember { mutableStateOf(Screen.HOME) }
+    var addresses by remember { mutableStateOf(dummyAddresses) }
+    var notifPrefs by remember { mutableStateOf(NotificationPrefs()) }
+    var appRating by remember { mutableStateOf(0) }
+    var shops by remember { mutableStateOf(dummyShops) }
+    val context = LocalContext.current
+    val currentUser = accounts.find { it.id == currentUserId }
+    val buyerName = currentUser?.takeIf { it.role == UserRole.BUYER }?.name ?: ""
+    val currentSellerName = currentUser?.takeIf { it.role == UserRole.SELLER }?.shopName ?: ""
+
+    fun isSellerVisible(shopName: String): Boolean {
+        val owner = accounts.find { it.shopName == shopName } ?: return true
+        return owner.isActive && owner.sellerStatus == SellerStatus.APPROVED
+    }
+
+    val visibleProducts = products.filter { isSellerVisible(it.sellerName) }
+    val favoriteProducts = visibleProducts.filter { it.id in favoriteIds }
+
+    fun enterSession(user: UserAccount) {
+        currentUserId = user.id
+        cartItems = emptyList()
+        favoriteIds = emptySet()
+        notifPrefs = NotificationPrefs()
+        appRating = 0
+        addresses = if (user.id == "acc-buyer-1") dummyAddresses else emptyList()
+        currentScreen = when (user.role) {
+            UserRole.BUYER -> Screen.HOME
+            UserRole.SELLER ->
+                if (user.sellerStatus == SellerStatus.APPROVED) Screen.SELLER_DASHBOARD
+                else Screen.SELLER_PENDING
+            UserRole.ADMIN -> Screen.ADMIN_DASHBOARD
+        }
+    }
+
+    fun logout() {
+        currentUserId = null
+        currentScreen = Screen.AUTH
+    }
+
+    val backTarget: Screen? = when (currentScreen) {
+        Screen.SPLASH, Screen.ONBOARDING, Screen.AUTH, Screen.HOME,
+        Screen.SELLER_DASHBOARD, Screen.SELLER_PENDING, Screen.ADMIN_DASHBOARD -> null
+        Screen.PRODUCT_DETAIL -> detailBackTo
+        Screen.CART -> cartBackTo
+        Screen.CHECKOUT -> Screen.CART
+        Screen.SELLER_CERTIFICATE, Screen.REVIEW -> Screen.PRODUCT_DETAIL
+        Screen.ORDER_TRACKING -> trackingBackTo
+        Screen.PROFILE -> Screen.HOME
+        Screen.ORDER_HISTORY, Screen.FAVORITES, Screen.ADDRESSES,
+        Screen.NOTIFICATION_SETTINGS, Screen.ABOUT -> Screen.PROFILE
+        Screen.ADMIN_VERIFICATION, Screen.ADMIN_USERS -> Screen.ADMIN_DASHBOARD
+        Screen.SELLER_PRODUCTS, Screen.SELLER_ORDERS, Screen.SELLER_SHOP -> Screen.SELLER_DASHBOARD
+    }
+
+    BackHandler(enabled = backTarget != null) {
+        backTarget?.let { currentScreen = it }
+    }
 
     when (currentScreen) {
         Screen.SPLASH -> SplashScreen(
@@ -104,29 +199,124 @@ fun AppNavigation() {
         )
 
         Screen.AUTH -> AuthScreen(
-            onAuthSuccess = { currentScreen = Screen.HOME }
+            onLogin = { email, password ->
+                val account = accounts.find {
+                    it.email.equals(email.trim(), ignoreCase = true) && it.password == password
+                }
+                if (account == null) {
+                    "Email atau password salah"
+                } else if (!account.isActive) {
+                    "Akun ini dinonaktifkan oleh admin"
+                } else {
+                    enterSession(account)
+                    null
+                }
+            },
+            onRegister = { name, email, password, role, shopName ->
+                val trimmedShop = shopName.trim()
+                when {
+                    accounts.any { it.email.equals(email.trim(), ignoreCase = true) } ->
+                        "Email sudah terdaftar"
+                    role == UserRole.SELLER && shops.keys.any { it.equals(trimmedShop, ignoreCase = true) } ->
+                        "Nama toko sudah dipakai"
+                    else -> {
+                        val account = UserAccount(
+                            id = UUID.randomUUID().toString(),
+                            name = name.trim(),
+                            email = email.trim(),
+                            password = password,
+                            role = role,
+                            shopName = if (role == UserRole.SELLER) trimmedShop else null,
+                            sellerStatus = if (role == UserRole.SELLER) SellerStatus.PENDING else null
+                        )
+                        accounts = accounts + account
+                        if (role == UserRole.SELLER) {
+                            shops = shops + (trimmedShop to ShopProfile(
+                                name = trimmedShop,
+                                description = "",
+                                address = "",
+                                phone = "",
+                                openHours = ""
+                            ))
+                        }
+                        enterSession(account)
+                        null
+                    }
+                }
+            }
         )
 
         Screen.HOME -> HomeScreen(
-            products = products,
+            products = visibleProducts,
             onProductClick = { product ->
                 selectedProduct = product
+                detailBackTo = Screen.HOME
                 currentScreen = Screen.PRODUCT_DETAIL
             },
-            onProfileClick = { currentScreen = Screen.PROFILE}
+            onProfileClick = { currentScreen = Screen.PROFILE }
         )
 
         Screen.PROFILE -> ProfileScreen(
+            userName = currentUser?.name ?: "",
+            userEmail = currentUser?.email ?: "",
+            orderCount = sellerOrders.count { it.customerName == buyerName } + dummyOrderHistory.size,
+            reviewCount = reviews.count { it.userName == buyerName },
+            favoriteCount = favoriteProducts.size,
+            appRating = appRating,
             onBack = { currentScreen = Screen.HOME },
-            onLogout = { currentScreen = Screen.AUTH },
+            onLogout = { logout() },
             onOrderHistoryClick = { currentScreen = Screen.ORDER_HISTORY },
-            onSellerDashboardClick = {currentScreen = Screen.SELLER_DASHBOARD}
+            onFavoritesClick = { currentScreen = Screen.FAVORITES },
+            onAddressesClick = { currentScreen = Screen.ADDRESSES },
+            onNotificationsClick = { currentScreen = Screen.NOTIFICATION_SETTINGS },
+            onAboutClick = { currentScreen = Screen.ABOUT },
+            onSubmitAppRating = { rating, _ ->
+                appRating = rating
+                Toast.makeText(context, "Terima kasih atas penilaianmu!", Toast.LENGTH_SHORT).show()
+            }
+        )
+
+        Screen.ADDRESSES -> AddressScreen(
+            addresses = addresses,
+            onBack = { currentScreen = Screen.PROFILE },
+            onSaveAddress = { saved -> addresses = addresses.withSaved(saved) },
+            onDeleteAddress = { id -> addresses = addresses.withoutAddress(id) },
+            onSetDefault = { id -> addresses = addresses.withDefault(id) }
+        )
+
+        Screen.NOTIFICATION_SETTINGS -> NotificationSettingsScreen(
+            prefs = notifPrefs,
+            onBack = { currentScreen = Screen.PROFILE },
+            onPrefsChange = { notifPrefs = it }
+        )
+
+        Screen.ABOUT -> AboutScreen(
+            onBack = { currentScreen = Screen.PROFILE }
+        )
+
+        Screen.FAVORITES -> FavoritesScreen(
+            favorites = favoriteProducts,
+            onBack = { currentScreen = Screen.PROFILE },
+            onBrowseProducts = { currentScreen = Screen.HOME },
+            onProductClick = { product ->
+                selectedProduct = product
+                detailBackTo = Screen.FAVORITES
+                currentScreen = Screen.PRODUCT_DETAIL
+            },
+            onRemoveFavorite = { product ->
+                favoriteIds = favoriteIds - product.id
+            }
         )
 
         Screen.PRODUCT_DETAIL -> selectedProduct?.let { product ->
             ProductDetailScreen(
                 product = product,
-                onBack = { currentScreen = Screen.HOME },
+                isFavorite = product.id in favoriteIds,
+                onToggleFavorite = {
+                    favoriteIds = if (product.id in favoriteIds) favoriteIds - product.id
+                    else favoriteIds + product.id
+                },
+                onBack = { currentScreen = detailBackTo },
                 onAddToCart = {
                     val existingItem = cartItems.find { it.product.id == product.id }
                     cartItems = if (existingItem != null) {
@@ -137,6 +327,7 @@ fun AppNavigation() {
                     } else {
                         cartItems + CartItem(product, 1)
                     }
+                    cartBackTo = Screen.PRODUCT_DETAIL
                     currentScreen = Screen.CART
                 },
                 onSellerClick = { currentScreen = Screen.SELLER_CERTIFICATE },
@@ -146,7 +337,8 @@ fun AppNavigation() {
 
         Screen.CART -> CartScreen(
             cartItems = cartItems,
-            onBack = { currentScreen = Screen.HOME },
+            onBack = { currentScreen = cartBackTo },
+            onBrowseProducts = { currentScreen = Screen.HOME },
             onRemoveItem = { item ->
                 cartItems = cartItems - item
             },
@@ -163,6 +355,7 @@ fun AppNavigation() {
 
         Screen.CHECKOUT -> CheckoutScreen(
             cartItems = cartItems,
+            savedAddresses = addresses,
             onBack = { currentScreen = Screen.CART },
             onOrderSuccess = {
                 val newOrders = createOrdersFromCart(cartItems, buyerName, sellerOrders.size)
@@ -180,7 +373,7 @@ fun AppNavigation() {
             }
             OrderTrackingScreen(
                 orderId = selectedOrderId ?: "-",
-                sellerName = order?.sellerName ?: currentSellerName,
+                sellerName = order?.sellerName ?: "Dapur Bunda",
                 status = order?.status ?: OrderStatus.DONE,
                 onBack = { currentScreen = trackingBackTo }
             )
@@ -193,14 +386,48 @@ fun AppNavigation() {
                 selectedOrderId = orderId
                 trackingBackTo = Screen.ORDER_HISTORY
                 currentScreen = Screen.ORDER_TRACKING
+            },
+            onReorder = { itemLines ->
+                val (updatedCart, skipped) = reorderItems(itemLines, products, cartItems)
+                if (skipped < itemLines.size) {
+                    cartItems = updatedCart
+                    cartBackTo = Screen.ORDER_HISTORY
+                    currentScreen = Screen.CART
+                }
+                if (skipped > 0) {
+                    val message = if (skipped == itemLines.size) {
+                        "Produk pada pesanan ini sudah tidak tersedia"
+                    } else {
+                        "$skipped produk sudah tidak tersedia dan dilewati"
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
             }
         )
 
         Screen.REVIEW -> selectedProduct?.let { product ->
             ReviewScreen(
                 productName = product.name,
+                reviews = reviews.filter { it.productId == product.id },
                 onBack = { currentScreen = Screen.PRODUCT_DETAIL },
-                onSubmitReview = { currentScreen = Screen.PRODUCT_DETAIL }
+                onSubmitReview = { rating, comment ->
+                    val newReview = Review(
+                        id = UUID.randomUUID().toString(),
+                        productId = product.id,
+                        userName = buyerName,
+                        rating = rating,
+                        comment = comment,
+                        date = todayLabel("d MMM yyyy"),
+                        babyAge = ""
+                    )
+                    val updatedReviews = listOf(newReview) + reviews.filterNot {
+                        it.productId == product.id && it.userName == buyerName
+                    }
+                    val updatedProducts = withRatingsFrom(products, updatedReviews)
+                    reviews = updatedReviews
+                    products = updatedProducts
+                    selectedProduct = updatedProducts.find { it.id == product.id } ?: product
+                }
             )
         }
 
@@ -208,16 +435,90 @@ fun AppNavigation() {
             SellerCertificateScreen(
                 sellerName = product.sellerName,
                 products = products,
+                shop = shops[product.sellerName],
+                certificate = certificates[product.sellerName],
                 onBack = { currentScreen = Screen.PRODUCT_DETAIL }
             )
         }
 
+        Screen.SELLER_PENDING -> SellerPendingScreen(
+            shopName = currentSellerName,
+            ownerName = currentUser?.name ?: "",
+            status = currentUser?.sellerStatus ?: SellerStatus.PENDING,
+            rejectionReason = currentUser?.rejectionReason,
+            certificate = certificates[currentSellerName],
+            onSubmitCertificate = { cert ->
+                certificates = certificates + (currentSellerName to cert)
+                accounts = accounts.map {
+                    if (it.id == currentUserId) {
+                        it.copy(sellerStatus = SellerStatus.PENDING, rejectionReason = null)
+                    } else it
+                }
+                Toast.makeText(context, "Sertifikat terkirim, menunggu verifikasi admin", Toast.LENGTH_SHORT).show()
+            },
+            onLogout = { logout() }
+        )
+
+        Screen.ADMIN_DASHBOARD -> AdminDashboardScreen(
+            accounts = accounts,
+            products = products,
+            orders = sellerOrders,
+            reviews = reviews,
+            onOpenVerification = { currentScreen = Screen.ADMIN_VERIFICATION },
+            onOpenUsers = { currentScreen = Screen.ADMIN_USERS },
+            onLogout = { logout() }
+        )
+
+        Screen.ADMIN_USERS -> AdminUsersScreen(
+            accounts = accounts,
+            onToggleActive = { accountId, active ->
+                accounts = accounts.map {
+                    if (it.id == accountId) it.copy(isActive = active) else it
+                }
+                Toast.makeText(
+                    context,
+                    if (active) "Akun diaktifkan" else "Akun dinonaktifkan",
+                    Toast.LENGTH_SHORT
+                ).show()
+            },
+            onBack = { currentScreen = Screen.ADMIN_DASHBOARD }
+        )
+
+        Screen.ADMIN_VERIFICATION -> AdminVerificationScreen(
+            accounts = accounts,
+            certificates = certificates,
+            onApprove = { accountId ->
+                val shop = accounts.find { it.id == accountId }?.shopName
+                accounts = accounts.map {
+                    if (it.id == accountId) {
+                        it.copy(sellerStatus = SellerStatus.APPROVED, rejectionReason = null)
+                    } else it
+                }
+                if (shop != null) {
+                    certificates[shop]?.let { cert ->
+                        certificates = certificates + (shop to cert.copy(status = CertStatus.ACTIVE))
+                    }
+                }
+                Toast.makeText(context, "Penjual disetujui", Toast.LENGTH_SHORT).show()
+            },
+            onReject = { accountId, reason ->
+                accounts = accounts.map {
+                    if (it.id == accountId) {
+                        it.copy(sellerStatus = SellerStatus.REJECTED, rejectionReason = reason)
+                    } else it
+                }
+                Toast.makeText(context, "Pengajuan ditolak", Toast.LENGTH_SHORT).show()
+            },
+            onBack = { currentScreen = Screen.ADMIN_DASHBOARD }
+        )
+
         Screen.SELLER_DASHBOARD -> SellerDashboardScreen(
             orders = sellerOrders.filter { it.sellerName == currentSellerName },
-            onBack = { currentScreen = Screen.PROFILE },
+            shopName = currentSellerName,
+            onLogout = { logout() },
             onManageProducts = { currentScreen = Screen.SELLER_PRODUCTS },
             onManageOrders = { currentScreen = Screen.SELLER_ORDERS },
-            onSellerProfile = { }
+            onSellerProfile = { currentScreen = Screen.SELLER_SHOP }
         )
 
         Screen.SELLER_ORDERS -> SellerOrdersScreen(
@@ -231,7 +532,7 @@ fun AppNavigation() {
         )
 
         Screen.SELLER_PRODUCTS -> SellerProductsScreen(
-            sellerName = "Dapur Bunda",
+            sellerName = currentSellerName,
             products = products,
             onBack = { currentScreen = Screen.SELLER_DASHBOARD },
             onSaveProduct = { saved ->
@@ -245,6 +546,20 @@ fun AppNavigation() {
                 products = products.filterNot { it.id == id }
             }
         )
+
+        Screen.SELLER_SHOP -> {
+            val shop = shops[currentSellerName]
+            if (shop != null) {
+                SellerShopProfileScreen(
+                    shop = shop,
+                    onBack = { currentScreen = Screen.SELLER_DASHBOARD },
+                    onSave = { updated ->
+                        shops = shops + (currentSellerName to updated)
+                        Toast.makeText(context, "Profil toko diperbarui", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -274,9 +589,45 @@ private fun createOrdersFromCart(
         }
 }
 
+private fun todayLabel(pattern: String): String =
+    LocalDate.now().format(DateTimeFormatter.ofPattern(pattern, Locale("id", "ID")))
+
+private fun reorderItems(
+    itemLines: List<String>,
+    products: List<Product>,
+    cartItems: List<CartItem>
+): Pair<List<CartItem>, Int> {
+    var updated = cartItems
+    var skipped = 0
+
+    itemLines.forEach { line ->
+        val match = Regex("^(.*) x(\\d+)$").find(line.trim())
+        val name = match?.groupValues?.get(1) ?: line.trim()
+        val quantity = match?.groupValues?.get(2)?.toIntOrNull() ?: 1
+        val product = products.find { it.name.equals(name, ignoreCase = true) }
+
+        if (product == null) {
+            skipped++
+        } else {
+            val existing = updated.find { it.product.id == product.id }
+            updated = if (existing != null) {
+                updated.map {
+                    if (it.product.id == product.id) it.copy(quantity = it.quantity + quantity)
+                    else it
+                }
+            } else {
+                updated + CartItem(product, quantity)
+            }
+        }
+    }
+
+    return updated to skipped
+}
+
 @Composable
 fun SplashScreen(
-    onFinished: () -> Unit) {
+    onFinished: () -> Unit
+) {
     val brandColor = Color(0xFFFF6B35)
 
     LaunchedEffect(Unit) {

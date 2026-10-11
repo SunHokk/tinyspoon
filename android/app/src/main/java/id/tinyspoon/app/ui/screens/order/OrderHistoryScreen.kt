@@ -87,7 +87,8 @@ private fun SellerOrder.toHistory(): OrderHistory = OrderHistory(
 fun OrderHistoryScreen(
     orders: List<SellerOrder>,
     onBack: () -> Unit,
-    onTrackOrder: (String) -> Unit
+    onTrackOrder: (String) -> Unit,
+    onReorder: (List<String>) -> Unit
 ) {
     val allOrders = orders.map { it.toHistory() } + dummyOrderHistory
 
@@ -161,7 +162,8 @@ fun OrderHistoryScreen(
                 items(allOrders) { order ->
                     OrderHistoryCard(
                         order = order,
-                        onTrackOrder = { onTrackOrder(order.orderId) }
+                        onTrackOrder = { onTrackOrder(order.orderId) },
+                        onReorder = { onReorder(order.items) }
                     )
                 }
             }
@@ -172,7 +174,8 @@ fun OrderHistoryScreen(
 @Composable
 fun OrderHistoryCard(
     order: OrderHistory,
-    onTrackOrder: () -> Unit
+    onTrackOrder: () -> Unit,
+    onReorder: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -269,7 +272,7 @@ fun OrderHistoryCard(
                     }
                 } else if (order.status == "Selesai") {
                     OutlinedButton(
-                        onClick = onTrackOrder,
+                        onClick = onReorder,
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = OrangePrimary

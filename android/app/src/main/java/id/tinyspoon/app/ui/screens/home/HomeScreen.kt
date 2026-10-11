@@ -30,23 +30,38 @@ data class Product(
     val texture: String,
     val rating: Float,
     val imageEmoji: String,
-    val allergens: List<String> = emptyList()
+    val allergens: List<String> = emptyList(),
+    val protein: Int = 0,
+    val carbs: Int = 0,
+    val fat: Int = 0,
+    val fiber: Int = 0
 )
 
+val Product.hasNutrition: Boolean
+    get() = protein + carbs + fat + fiber > 0
+
 val dummyProducts = listOf(
-    Product("1", "Bubur Ayam Sayuran", 25000, "Dapur Bunda", "6-8 bulan", "Halus", 4.8f, "🍚", emptyList()),
-    Product("2", "Puree Wortel Kentang", 20000, "MPASI Sehat", "6-8 bulan", "Halus", 4.6f, "🥕", listOf("Susu")),
-    Product("3", "Tim Ikan Salmon", 35000, "Nutrisi Bayi", "9-11 bulan", "Lembut", 4.9f, "🐟", listOf("Seafood")),
-    Product("4", "Nasi Lembek Ayam", 28000, "Dapur Bunda", "9-11 bulan", "Lembut", 4.7f, "🍗", listOf("Telur")),
-    Product("5", "Bubur Kacang Hijau", 18000, "MPASI Sehat", "6-8 bulan", "Halus", 4.5f, "🌱", listOf("Kacang")),
-    Product("6", "Sup Sayuran Mix", 22000, "Nutrisi Bayi", "12+ bulan", "Kasar", 4.8f, "🥦", listOf("Gluten")),
-    Product("7", "Nasi Tim Hati Ayam", 30000, "Dapur Bunda", "9-11 bulan", "Lembut", 4.7f, "🍱", listOf("Telur")),
-    Product("8", "Puree Labu Kuning", 19000, "MPASI Sehat", "6-8 bulan", "Halus", 4.6f, "🎃", listOf("Susu")),
+    Product("1", "Bubur Ayam Sayuran", 25000, "Dapur Bunda", "6-8 bulan", "Halus", 4.8f, "🍚", emptyList(), 6, 18, 3, 2),
+    Product("2", "Puree Wortel Kentang", 20000, "MPASI Sehat", "6-8 bulan", "Halus", 4.6f, "🥕", listOf("Susu"), 2, 15, 1, 3),
+    Product("3", "Tim Ikan Salmon", 35000, "Nutrisi Bayi", "9-11 bulan", "Lembut", 4.9f, "🐟", listOf("Seafood"), 12, 14, 6, 1),
+    Product("4", "Nasi Lembek Ayam", 28000, "Dapur Bunda", "9-11 bulan", "Lembut", 4.7f, "🍗", listOf("Telur"), 9, 22, 4, 1),
+    Product("5", "Bubur Kacang Hijau", 18000, "MPASI Sehat", "6-8 bulan", "Halus", 4.5f, "🌱", listOf("Kacang"), 5, 20, 2, 6),
+    Product("6", "Sup Sayuran Mix", 22000, "Nutrisi Bayi", "12+ bulan", "Kasar", 4.8f, "🥦", listOf("Gluten"), 4, 12, 2, 5),
+    Product("7", "Nasi Tim Hati Ayam", 30000, "Dapur Bunda", "9-11 bulan", "Lembut", 4.7f, "🍱", listOf("Telur"), 10, 21, 5, 1),
+    Product("8", "Puree Labu Kuning", 19000, "MPASI Sehat", "6-8 bulan", "Halus", 4.6f, "🎃", listOf("Susu"), 1, 13, 1, 3),
 )
 
 val ageCategories = listOf("Semua", "6-8 bulan", "9-11 bulan", "12+ bulan")
 val textureCategories = listOf("Semua", "Halus", "Lembut", "Kasar")
 val allergenOptions = listOf("Susu", "Telur", "Kacang", "Gluten", "Seafood")
+val nutritionOptions = listOf("Tinggi Protein", "Tinggi Serat", "Rendah Lemak")
+
+fun Product.matchesNutrition(option: String): Boolean = hasNutrition && when (option) {
+    "Tinggi Protein" -> protein >= 8
+    "Tinggi Serat" -> fiber >= 4
+    "Rendah Lemak" -> fat <= 2
+    else -> true
+}
 
 @Composable
 fun HomeScreen(
@@ -57,15 +72,18 @@ fun HomeScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Semua") }
     var selectedTexture by remember { mutableStateOf("Semua") }
+    var selectedNutrition by remember { mutableStateOf(setOf<String>()) }
     var excludedAllergens by remember { mutableStateOf(setOf<String>()) }
 
     val isFilterActive = selectedCategory != "Semua" ||
             selectedTexture != "Semua" ||
+            selectedNutrition.isNotEmpty() ||
             excludedAllergens.isNotEmpty()
 
     fun resetFilters() {
         selectedCategory = "Semua"
         selectedTexture = "Semua"
+        selectedNutrition = emptySet()
         excludedAllergens = emptySet()
     }
 
@@ -74,8 +92,9 @@ fun HomeScreen(
                 product.sellerName.contains(searchQuery, ignoreCase = true)
         val matchCategory = selectedCategory == "Semua" || product.ageGroup == selectedCategory
         val matchTexture = selectedTexture == "Semua" || product.texture == selectedTexture
+        val matchNutrition = selectedNutrition.all { product.matchesNutrition(it) }
         val matchAllergen = excludedAllergens.none { it in product.allergens }
-        matchSearch && matchCategory && matchTexture && matchAllergen
+        matchSearch && matchCategory && matchTexture && matchNutrition && matchAllergen
     }
 
     LazyColumn(
@@ -231,6 +250,32 @@ fun HomeScreen(
                             text = texture,
                             isSelected = selectedTexture == texture,
                             onClick = { selectedTexture = texture }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Kandungan Gizi",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(nutritionOptions) { option ->
+                        val isSelected = option in selectedNutrition
+                        CategoryChip(
+                            text = option,
+                            isSelected = isSelected,
+                            onClick = {
+                                selectedNutrition = if (isSelected) {
+                                    selectedNutrition - option
+                                } else {
+                                    selectedNutrition + option
+                                }
+                            }
                         )
                     }
                 }
