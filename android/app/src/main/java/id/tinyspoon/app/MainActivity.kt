@@ -74,6 +74,8 @@ import id.tinyspoon.app.ui.screens.seller.ShopProfile
 import id.tinyspoon.app.ui.screens.seller.dummySellerOrders
 import id.tinyspoon.app.ui.screens.seller.dummyShops
 import id.tinyspoon.app.ui.theme.TinySpoonTheme
+import id.tinyspoon.app.ui.screens.product.CertStatus
+import id.tinyspoon.app.ui.screens.product.dummyCertificates
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -115,7 +117,8 @@ enum class Screen {
 fun AppNavigation() {
     var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
     var accounts by remember { mutableStateOf(dummyAccounts) }
-    var currentUser by remember { mutableStateOf<UserAccount?>(null) }
+    var currentUserId by remember { mutableStateOf<String?>(null) }
+    var certificates by remember { mutableStateOf(dummyCertificates) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
     val seedReviews = remember { seedReviewsFor(dummyProducts) }
@@ -132,13 +135,13 @@ fun AppNavigation() {
     var appRating by remember { mutableStateOf(0) }
     var shops by remember { mutableStateOf(dummyShops) }
     val context = LocalContext.current
-
+    val currentUser = accounts.find { it.id == currentUserId }
     val buyerName = currentUser?.takeIf { it.role == UserRole.BUYER }?.name ?: ""
     val currentSellerName = currentUser?.takeIf { it.role == UserRole.SELLER }?.shopName ?: ""
     val favoriteProducts = products.filter { it.id in favoriteIds }
 
     fun enterSession(user: UserAccount) {
-        currentUser = user
+        currentUserId = user.id
         cartItems = emptyList()
         favoriteIds = emptySet()
         notifPrefs = NotificationPrefs()
@@ -154,7 +157,7 @@ fun AppNavigation() {
     }
 
     fun logout() {
-        currentUser = null
+        currentUserId = null
         currentScreen = Screen.AUTH
     }
 
@@ -421,6 +424,7 @@ fun AppNavigation() {
                 sellerName = product.sellerName,
                 products = products,
                 shop = shops[product.sellerName],
+                certificate = certificates[product.sellerName],
                 onBack = { currentScreen = Screen.PRODUCT_DETAIL }
             )
         }
@@ -428,17 +432,53 @@ fun AppNavigation() {
         Screen.SELLER_PENDING -> SellerPendingScreen(
             shopName = currentSellerName,
             ownerName = currentUser?.name ?: "",
+            status = currentUser?.sellerStatus ?: SellerStatus.PENDING,
+            rejectionReason = currentUser?.rejectionReason,
+            certificate = certificates[currentSellerName],
+            onSubmitCertificate = { cert ->
+                certificates = certificates + (currentSellerName to cert)
+                accounts = accounts.map {
+                    if (it.id == currentUserId) {
+                        it.copy(sellerStatus = SellerStatus.PENDING, rejectionReason = null)
+                    } else it
+                }
+                Toast.makeText(context, "Sertifikat terkirim, menunggu verifikasi admin", Toast.LENGTH_SHORT).show()
+            },
             onLogout = { logout() }
         )
 
         Screen.ADMIN_DASHBOARD -> AdminDashboardScreen(
             accounts = accounts,
+            certificates = certificates,
+            onApprove = { accountId ->
+                val shop = accounts.find { it.id == accountId }?.shopName
+                accounts = accounts.map {
+                    if (it.id == accountId) {
+                        it.copy(sellerStatus = SellerStatus.APPROVED, rejectionReason = null)
+                    } else it
+                }
+                if (shop != null) {
+                    certificates[shop]?.let { cert ->
+                        certificates = certificates + (shop to cert.copy(status = CertStatus.ACTIVE))
+                    }
+                }
+                Toast.makeText(context, "Penjual disetujui", Toast.LENGTH_SHORT).show()
+            },
+            onReject = { accountId, reason ->
+                accounts = accounts.map {
+                    if (it.id == accountId) {
+                        it.copy(sellerStatus = SellerStatus.REJECTED, rejectionReason = reason)
+                    } else it
+                }
+                Toast.makeText(context, "Pengajuan ditolak", Toast.LENGTH_SHORT).show()
+            },
             onLogout = { logout() }
         )
 
         Screen.SELLER_DASHBOARD -> SellerDashboardScreen(
             orders = sellerOrders.filter { it.sellerName == currentSellerName },
             shopName = currentSellerName,
+            certificate = certificates[currentSellerName],
             onLogout = { logout() },
             onManageProducts = { currentScreen = Screen.SELLER_PRODUCTS },
             onManageOrders = { currentScreen = Screen.SELLER_ORDERS },

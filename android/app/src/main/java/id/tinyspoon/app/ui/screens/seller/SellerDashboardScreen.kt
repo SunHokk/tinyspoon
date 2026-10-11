@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.tinyspoon.app.ui.theme.*
+import id.tinyspoon.app.ui.screens.product.SellerCertificate
 
 private fun formatRupiahCompact(amount: Int): String = when {
     amount >= 1_000_000 -> "Rp ${"%.1f".format(amount / 1_000_000.0)}jt"
@@ -28,6 +29,7 @@ private fun formatRupiahCompact(amount: Int): String = when {
 fun SellerDashboardScreen(
     orders: List<SellerOrder>,
     shopName: String,
+    certificate: SellerCertificate? = null,
     onLogout: () -> Unit,
     onManageProducts: () -> Unit,
     onManageOrders: () -> Unit,
@@ -191,33 +193,35 @@ fun SellerDashboardScreen(
                 )
             }
 
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            if (certificate != null) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
-                        Text(text = "📜", fontSize = 32.sp)
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Sertifikat BPOM Aktif",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF2E7D32)
-                            )
-                            Text(
-                                text = "Berlaku hingga 31 Desember 2027",
-                                fontSize = 12.sp,
-                                color = Color(0xFF388E3C)
-                            )
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(text = "📜", fontSize = 32.sp)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Sertifikat Aktif",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E7D32)
+                                )
+                                Text(
+                                    text = "${certificate.certNumber} • berlaku hingga ${certificate.expiredDate}",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF388E3C)
+                                )
+                            }
                         }
                     }
                 }

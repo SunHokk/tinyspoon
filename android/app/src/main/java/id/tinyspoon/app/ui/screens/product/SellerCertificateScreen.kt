@@ -30,7 +30,8 @@ data class SellerCertificate(
     val issuedDate: String,
     val expiredDate: String,
     val certType: String,
-    val status: CertStatus
+    val status: CertStatus,
+    val documentName: String = ""
 )
 
 enum class CertStatus {
@@ -72,9 +73,9 @@ fun SellerCertificateScreen(
     sellerName: String,
     products: List<Product> = dummyProducts,
     shop: ShopProfile? = null,
+    certificate: SellerCertificate? = dummyCertificates[sellerName],
     onBack: () -> Unit
 ) {
-    val certificate = dummyCertificates[sellerName]
     val sellerProducts = products.filter { it.sellerName == sellerName }
     val scrollState = rememberScrollState()
 
@@ -170,7 +171,7 @@ fun SellerCertificateScreen(
                 }
             }
 
-            if (shop != null) {
+            if (shop != null && shop.description.isNotBlank()) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
