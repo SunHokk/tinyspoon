@@ -117,6 +117,8 @@ async function findProfileId(email) {
   return data?.id ?? null
 }
 
+const shopIdByName = {}
+
 for (const account of accounts) {
   let id = await findProfileId(account.email)
 
@@ -163,6 +165,7 @@ for (const account of accounts) {
         .single(),
       `Perbarui toko ${account.shop.name}`
     )
+    shopIdByName[account.shop.name] = shop.id
 
     const existing = await must(
       supabase
@@ -188,6 +191,39 @@ for (const account of accounts) {
         'Isi sertifikat'
       )
     }
+  }
+}
+
+const products = [
+  { shop: 'Dapur Bunda', name: 'Bubur Ayam Sayuran', price: 25000, emoji: '🍚', age_group: 'M6_8', texture: 'HALUS', allergens: [], protein: 6, carbs: 18, fat: 3, fiber: 2 },
+  { shop: 'MPASI Sehat', name: 'Puree Wortel Kentang', price: 20000, emoji: '🥕', age_group: 'M6_8', texture: 'HALUS', allergens: ['SUSU'], protein: 2, carbs: 15, fat: 1, fiber: 3 },
+  { shop: 'Nutrisi Bayi', name: 'Tim Ikan Salmon', price: 35000, emoji: '🐟', age_group: 'M9_11', texture: 'LEMBUT', allergens: ['SEAFOOD'], protein: 12, carbs: 14, fat: 6, fiber: 1 },
+  { shop: 'Dapur Bunda', name: 'Nasi Lembek Ayam', price: 28000, emoji: '🍗', age_group: 'M9_11', texture: 'LEMBUT', allergens: ['TELUR'], protein: 9, carbs: 22, fat: 4, fiber: 1 },
+  { shop: 'MPASI Sehat', name: 'Bubur Kacang Hijau', price: 18000, emoji: '🌱', age_group: 'M6_8', texture: 'HALUS', allergens: ['KACANG'], protein: 5, carbs: 20, fat: 2, fiber: 6 },
+  { shop: 'Nutrisi Bayi', name: 'Sup Sayuran Mix', price: 22000, emoji: '🥦', age_group: 'M12_PLUS', texture: 'KASAR', allergens: ['GLUTEN'], protein: 4, carbs: 12, fat: 2, fiber: 5 },
+  { shop: 'Dapur Bunda', name: 'Nasi Tim Hati Ayam', price: 30000, emoji: '🍱', age_group: 'M9_11', texture: 'LEMBUT', allergens: ['TELUR'], protein: 10, carbs: 21, fat: 5, fiber: 1 },
+  { shop: 'MPASI Sehat', name: 'Puree Labu Kuning', price: 19000, emoji: '🎃', age_group: 'M6_8', texture: 'HALUS', allergens: ['SUSU'], protein: 1, carbs: 13, fat: 1, fiber: 3 },
+]
+
+for (const product of products) {
+  const { shop: shopName, ...fields } = product
+  const shopId = shopIdByName[shopName]
+
+  const existing = await must(
+    supabase
+      .from('products')
+      .select('id')
+      .eq('shop_id', shopId)
+      .eq('name', fields.name)
+      .is('deleted_at', null),
+    `Cek produk ${fields.name}`
+  )
+  if (existing.length === 0) {
+    await must(
+      supabase.from('products').insert({ shop_id: shopId, ...fields }),
+      `Isi produk ${fields.name}`
+    )
+    console.log(`✓ produk ${fields.name}`)
   }
 }
 

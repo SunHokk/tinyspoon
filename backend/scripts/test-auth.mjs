@@ -84,7 +84,7 @@ try {
     check('bisa mengubah namanya sendiri', !nameError, nameError?.message)
 
     const { data: shops } = await buyer.from('shops').select('id')
-    check('belum bisa melihat toko lain (Fase 2 membukanya)', (shops ?? []).length === 0)
+    check('melihat 3 toko terverifikasi', (shops ?? []).length === 3)
   }
 
   console.log('\nPenjual (dapurbunda@email.com)')
@@ -98,7 +98,7 @@ try {
     check('tokonya Dapur Bunda dan APPROVED', shop?.name === 'Dapur Bunda' && shop?.verification_status === 'APPROVED')
 
     const { data: shops } = await seller.from('shops').select('name')
-    check('hanya melihat tokonya sendiri', (shops ?? []).length === 1)
+    check('melihat 3 toko terverifikasi (miliknya dan toko lain)', (shops ?? []).length === 3)
   }
 
   console.log('\nAdmin (admin@tinyspoon.id)')
