@@ -11,5 +11,15 @@
   "description": "",
   "devDependencies": {
     "supabase": "^2.120.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3"
+  },
+  "type": "module",
+  "scripts": {
+    "seed": "node --env-file=.env scripts/seed.mjs",
+    "test:auth": "node --env-file=.env scripts/test-auth.mjs"
   }
 }
+
+
