@@ -6,7 +6,8 @@
   "scripts": {
     "seed": "node --env-file=.env scripts/seed.mjs",
     "test:auth": "node --env-file=.env scripts/test-auth.mjs",
-    "test:catalog": "node --env-file=.env scripts/test-catalog.mjs"
+    "test:catalog": "node --env-file=.env scripts/test-catalog.mjs",
+    "test:orders": "node --env-file=.env scripts/test-orders.mjs"
   },
   "keywords": [],
   "author": "",
