@@ -8,7 +8,8 @@
     "test:auth": "node --env-file=.env scripts/test-auth.mjs",
     "test:catalog": "node --env-file=.env scripts/test-catalog.mjs",
     "test:orders": "node --env-file=.env scripts/test-orders.mjs",
-    "test:profile": "node --env-file=.env scripts/test-profile.mjs"
+    "test:profile": "node --env-file=.env scripts/test-profile.mjs",
+    "test:admin": "node --env-file=.env scripts/test-admin.mjs"
   },
   "keywords": [],
   "author": "",
