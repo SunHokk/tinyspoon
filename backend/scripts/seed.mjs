@@ -227,4 +227,52 @@ for (const product of products) {
   }
 }
 
+const sampleReviews = [
+  { author: 'Bunda Sari', baby_age: '7 bulan', date: '2024-09-20', comment: 'MPASI-nya enak banget! Anak saya langsung suka dan habis 1 porsi. Teksturnya juga pas untuk usia 7 bulan.' },
+  { author: 'Mama Rara', baby_age: '8 bulan', date: '2024-09-18', comment: 'Bahan-bahannya segar dan bergizi. Packaging juga rapi dan higienis. Recommended banget!' },
+  { author: 'Ibu Dewi', baby_age: '6 bulan', date: '2024-09-15', comment: 'Rasanya enak dan anak saya suka. Tapi pengirimannya agak lama, semoga bisa lebih cepat.' },
+  { author: 'Bunda Tika', baby_age: '9 bulan', date: '2024-09-10', comment: 'Udah berlangganan 3 bulan, selalu puas! Nutrisinya lengkap dan anak jadi lebih sehat.' },
+  { author: 'Mama Cici', baby_age: '7 bulan', date: '2024-09-05', comment: 'Produknya bagus dan terpercaya karena ada sertifikat BPOM-nya. Harga juga wajar.' },
+]
+
+// Jumlah ulasan bintang 5 dari 5 ulasan contoh (sisanya bintang 4)
+const fivesByProduct = {
+  'Bubur Ayam Sayuran': 4,
+  'Puree Wortel Kentang': 3,
+  'Tim Ikan Salmon': 5,
+  'Nasi Lembek Ayam': 4,
+  'Bubur Kacang Hijau': 3,
+  'Sup Sayuran Mix': 4,
+  'Nasi Tim Hati Ayam': 4,
+  'Puree Labu Kuning': 3,
+}
+
+const allProducts = await must(
+  supabase.from('products').select('id, name').is('deleted_at', null),
+  'Ambil produk'
+)
+
+for (const [productName, fives] of Object.entries(fivesByProduct)) {
+  const product = allProducts.find((p) => p.name === productName)
+  if (!product) continue
+
+  const existing = await must(
+    supabase.from('reviews').select('id').eq('product_id', product.id).is('user_id', null),
+    `Cek ulasan ${productName}`
+  )
+  if (existing.length > 0) continue
+
+  const rows = sampleReviews.map((review, index) => ({
+    product_id: product.id,
+    user_id: null,
+    author_name: review.author,
+    rating: index < fives ? 5 : 4,
+    comment: review.comment,
+    baby_age: review.baby_age,
+    created_at: review.date,
+  }))
+  await must(supabase.from('reviews').insert(rows), `Isi ulasan ${productName}`)
+  console.log(`✓ ulasan contoh ${productName}`)
+}
+
 console.log('\nSeed selesai.')

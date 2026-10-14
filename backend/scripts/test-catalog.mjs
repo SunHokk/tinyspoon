@@ -69,7 +69,7 @@ try {
         salmon?.protein === 12 &&
         salmon?.allergens?.includes('SEAFOOD')
     )
-    check('rating 0 dan 0 ulasan sebelum ada ulasan', salmon?.rating === 0 && salmon?.review_count === 0)
+    check('rating 5 dari 5 ulasan contoh', salmon?.rating === 5 && salmon?.review_count === 5)
 
     const { error: insertError } = await buyer.from('products').insert({
       shop_id: salmon.shop_id,
