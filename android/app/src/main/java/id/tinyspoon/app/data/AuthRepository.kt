@@ -10,6 +10,7 @@ import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import id.tinyspoon.app.ui.screens.product.SellerCertificate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.SerialName
@@ -17,7 +18,11 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-data class SessionUser(val account: UserAccount, val shop: ShopProfile?)
+data class SessionUser(
+    val account: UserAccount,
+    val shop: ShopProfile?,
+    val certificate: SellerCertificate? = null
+)
 
 data class AuthResult(val user: SessionUser? = null, val error: String? = null)
 
@@ -180,7 +185,8 @@ object AuthRepository {
             )
         }
 
-        return AuthResult(user = SessionUser(account, shopProfile))
+        val certificate = if (role == UserRole.SELLER) SellerRepository.loadMyCertificate() else null
+        return AuthResult(user = SessionUser(account, shopProfile, certificate))
     }
 
     private fun friendlyError(e: Exception): String {

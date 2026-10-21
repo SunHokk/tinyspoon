@@ -85,6 +85,9 @@ import id.tinyspoon.app.ui.screens.admin.AdminVerificationScreen
 import id.tinyspoon.app.data.CatalogRepository
 import id.tinyspoon.app.data.ShopDetail
 import id.tinyspoon.app.data.OrderRepository
+import id.tinyspoon.app.data.SellerRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -145,6 +148,7 @@ fun AppNavigation() {
     var sellerDetail by remember { mutableStateOf<ShopDetail?>(null) }
     var sellerDetailLoading by remember { mutableStateOf(false) }
     var sellerOrders by remember { mutableStateOf(dummySellerOrders) }
+    var shopOrders by remember { mutableStateOf<List<SellerOrder>>(emptyList()) }
     var buyerOrders by remember { mutableStateOf<List<SellerOrder>>(emptyList()) }
     var ordersLoading by remember { mutableStateOf(false) }
     var ordersError by remember { mutableStateOf<String?>(null) }
@@ -200,6 +204,15 @@ fun AppNavigation() {
         scope.launch { loadOrdersNow() }
     }
 
+    suspend fun loadShopOrdersNow() {
+        val result = OrderRepository.loadMyOrders()
+        result.orders?.let { shopOrders = it }
+    }
+
+    fun reloadShopOrders() {
+        scope.launch { loadShopOrdersNow() }
+    }
+
     fun toggleFavorite(productId: String) {
         val wasFavorite = productId in favoriteIds
         favoriteIds = if (wasFavorite) favoriteIds - productId else favoriteIds + productId
@@ -216,8 +229,9 @@ fun AppNavigation() {
     fun enterSession(session: SessionUser) {
         val user = session.account
         accounts = accounts.filterNot { it.id == user.id } + user
-        session.shop?.let { shop ->
-            if (shops[shop.name] == null) shops = shops + (shop.name to shop)
+        session.shop?.let { shop -> shops = shops + (shop.name to shop) }
+        session.certificate?.let { cert ->
+            user.shopName?.let { certificates = certificates + (it to cert) }
         }
         currentUserId = user.id
         cartItems = emptyList()
@@ -225,6 +239,7 @@ fun AppNavigation() {
         notifPrefs = NotificationPrefs()
         appRating = 0
         addresses = emptyList()
+        shopOrders = emptyList()
         currentScreen = when (user.role) {
             UserRole.BUYER -> Screen.HOME
             UserRole.SELLER ->
@@ -234,6 +249,7 @@ fun AppNavigation() {
         }
         reloadCatalog()
         if (user.role == UserRole.BUYER) reloadOrders()
+        if (user.role == UserRole.SELLER && user.sellerStatus == SellerStatus.APPROVED) reloadShopOrders()
     }
 
     fun logout() {
@@ -242,6 +258,7 @@ fun AppNavigation() {
         products = emptyList()
         reviews = emptyList()
         buyerOrders = emptyList()
+        shopOrders = emptyList()
         favoriteIds = emptySet()
         currentScreen = Screen.AUTH
     }
@@ -505,14 +522,35 @@ fun AppNavigation() {
             status = currentUser?.sellerStatus ?: SellerStatus.PENDING,
             rejectionReason = currentUser?.rejectionReason,
             certificate = certificates[currentSellerName],
-            onSubmitCertificate = { cert ->
-                certificates = certificates + (currentSellerName to cert)
-                accounts = accounts.map {
-                    if (it.id == currentUserId) {
-                        it.copy(sellerStatus = SellerStatus.PENDING, rejectionReason = null)
-                    } else it
+            onSubmitCertificate = { cert, uri ->
+                if (uri == null) {
+                    "Pilih file dokumen sertifikat"
+                } else {
+                    val bytes = withContext(Dispatchers.IO) {
+                        try {
+                            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    if (bytes == null) {
+                        "Tidak dapat membaca file. Pilih ulang file"
+                    } else {
+                        val error = SellerRepository.submitCertificate(cert, bytes)
+                        if (error == null) {
+                            SellerRepository.loadMyCertificate()?.let { saved ->
+                                certificates = certificates + (currentSellerName to saved)
+                            }
+                            accounts = accounts.map {
+                                if (it.id == currentUserId) {
+                                    it.copy(sellerStatus = SellerStatus.PENDING, rejectionReason = null)
+                                } else it
+                            }
+                            Toast.makeText(context, "Sertifikat terkirim, menunggu verifikasi admin", Toast.LENGTH_SHORT).show()
+                        }
+                        error
+                    }
                 }
-                Toast.makeText(context, "Sertifikat terkirim, menunggu verifikasi admin", Toast.LENGTH_SHORT).show()
             },
             onLogout = { logout() }
         )
@@ -571,20 +609,28 @@ fun AppNavigation() {
         )
 
         Screen.SELLER_DASHBOARD -> SellerDashboardScreen(
-            orders = sellerOrders.filter { it.sellerName == currentSellerName },
+            orders = shopOrders,
             shopName = currentSellerName,
+            certificate = certificates[currentSellerName]?.takeIf { it.status == CertStatus.ACTIVE },
             onLogout = { logout() },
             onManageProducts = { currentScreen = Screen.SELLER_PRODUCTS },
-            onManageOrders = { currentScreen = Screen.SELLER_ORDERS },
+            onManageOrders = {
+                reloadShopOrders()
+                currentScreen = Screen.SELLER_ORDERS
+            },
             onSellerProfile = { currentScreen = Screen.SELLER_SHOP }
         )
 
         Screen.SELLER_ORDERS -> SellerOrdersScreen(
-            orders = sellerOrders.filter { it.sellerName == currentSellerName },
+            orders = shopOrders,
             onBack = { currentScreen = Screen.SELLER_DASHBOARD },
             onUpdateStatus = { id, newStatus ->
-                sellerOrders = sellerOrders.map {
-                    if (it.id == id) it.copy(status = newStatus) else it
+                scope.launch {
+                    val error = SellerRepository.updateOrderStatus(id, newStatus)
+                    if (error != null) {
+                        Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                    }
+                    loadShopOrdersNow()
                 }
             }
         )
@@ -594,14 +640,27 @@ fun AppNavigation() {
             products = products,
             onBack = { currentScreen = Screen.SELLER_DASHBOARD },
             onSaveProduct = { saved ->
-                products = if (products.any { it.id == saved.id }) {
-                    products.map { if (it.id == saved.id) saved else it }
-                } else {
-                    products + saved
+                scope.launch {
+                    val isNew = products.none { it.id == saved.id }
+                    val error = SellerRepository.saveProduct(saved, isNew)
+                    if (error != null) {
+                        Toast.makeText(context, "Gagal menyimpan: $error", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "Produk disimpan", Toast.LENGTH_SHORT).show()
+                    }
+                    loadCatalogNow()
                 }
             },
             onDeleteProduct = { id ->
-                products = products.filterNot { it.id == id }
+                scope.launch {
+                    val error = SellerRepository.deleteProduct(id)
+                    if (error != null) {
+                        Toast.makeText(context, "Gagal menghapus: $error", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "Produk dihapus", Toast.LENGTH_SHORT).show()
+                    }
+                    loadCatalogNow()
+                }
             }
         )
 
@@ -612,8 +671,15 @@ fun AppNavigation() {
                     shop = shop,
                     onBack = { currentScreen = Screen.SELLER_DASHBOARD },
                     onSave = { updated ->
-                        shops = shops + (currentSellerName to updated)
-                        Toast.makeText(context, "Profil toko diperbarui", Toast.LENGTH_SHORT).show()
+                        scope.launch {
+                            val error = SellerRepository.updateShop(updated)
+                            if (error == null) {
+                                shops = shops + (currentSellerName to updated)
+                                Toast.makeText(context, "Profil toko diperbarui", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Gagal menyimpan: $error", Toast.LENGTH_LONG).show()
+                            }
+                        }
                     }
                 )
             }
