@@ -86,11 +86,14 @@ private fun SellerOrder.toHistory(): OrderHistory = OrderHistory(
 @Composable
 fun OrderHistoryScreen(
     orders: List<SellerOrder>,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
+    onRetry: () -> Unit = {},
     onBack: () -> Unit,
     onTrackOrder: (String) -> Unit,
     onReorder: (List<String>) -> Unit
 ) {
-    val allOrders = orders.map { it.toHistory() } + dummyOrderHistory
+    val allOrders = orders.map { it.toHistory() }
 
     Column(
         modifier = Modifier
@@ -139,18 +142,38 @@ fun OrderHistoryScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(text = "📋", fontSize = 64.sp)
-                    Text(
-                        text = "Belum ada pesanan",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "Yuk pesan MPASI untuk si kecil!",
-                        fontSize = 14.sp,
-                        color = TextSecondary
-                    )
+                    if (isLoading) {
+                        CircularProgressIndicator(color = OrangePrimary)
+                        Text(text = "Memuat pesanan...", fontSize = 13.sp, color = TextSecondary)
+                    } else if (errorMessage != null) {
+                        Text(text = "📡", fontSize = 64.sp)
+                        Text(
+                            text = errorMessage,
+                            fontSize = 13.sp,
+                            color = TextSecondary,
+                            modifier = Modifier.padding(horizontal = 32.dp)
+                        )
+                        Button(
+                            onClick = onRetry,
+                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Coba Lagi", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Text(text = "📋", fontSize = 64.sp)
+                        Text(
+                            text = "Belum ada pesanan",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Yuk pesan MPASI untuk si kecil!",
+                            fontSize = 14.sp,
+                            color = TextSecondary
+                        )
+                    }
                 }
             }
         } else {
@@ -159,7 +182,7 @@ fun OrderHistoryScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(allOrders) { order ->
+                items(allOrders, key = { it.orderId }) { order ->
                     OrderHistoryCard(
                         order = order,
                         onTrackOrder = { onTrackOrder(order.orderId) },

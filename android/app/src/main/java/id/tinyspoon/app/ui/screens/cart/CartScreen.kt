@@ -255,7 +255,7 @@ fun CartItemCard(
                         modifier = Modifier
                             .size(28.dp)
                             .background(OrangePrimary, RoundedCornerShape(6.dp))
-                            .clickable { onQuantityChange(item.quantity + 1) },
+                            .clickable { if (item.quantity < 50) onQuantityChange(item.quantity + 1) },
                         contentAlignment = Alignment.Center
                     ) {
                         Text("+", fontSize = 16.sp, color = Color.White, fontWeight = FontWeight.Bold)

@@ -84,6 +84,7 @@ import id.tinyspoon.app.ui.screens.admin.AdminUsersScreen
 import id.tinyspoon.app.ui.screens.admin.AdminVerificationScreen
 import id.tinyspoon.app.data.CatalogRepository
 import id.tinyspoon.app.data.ShopDetail
+import id.tinyspoon.app.data.OrderRepository
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -144,6 +145,9 @@ fun AppNavigation() {
     var sellerDetail by remember { mutableStateOf<ShopDetail?>(null) }
     var sellerDetailLoading by remember { mutableStateOf(false) }
     var sellerOrders by remember { mutableStateOf(dummySellerOrders) }
+    var buyerOrders by remember { mutableStateOf<List<SellerOrder>>(emptyList()) }
+    var ordersLoading by remember { mutableStateOf(false) }
+    var ordersError by remember { mutableStateOf<String?>(null) }
     var selectedOrderId by remember { mutableStateOf<String?>(null) }
     var trackingBackTo by remember { mutableStateOf(Screen.HOME) }
     var favoriteIds by remember { mutableStateOf(setOf<String>()) }
@@ -183,6 +187,19 @@ fun AppNavigation() {
         scope.launch { loadCatalogNow() }
     }
 
+    suspend fun loadOrdersNow() {
+        ordersLoading = true
+        ordersError = null
+        val result = OrderRepository.loadMyOrders()
+        result.orders?.let { buyerOrders = it }
+        ordersError = result.error
+        ordersLoading = false
+    }
+
+    fun reloadOrders() {
+        scope.launch { loadOrdersNow() }
+    }
+
     fun toggleFavorite(productId: String) {
         val wasFavorite = productId in favoriteIds
         favoriteIds = if (wasFavorite) favoriteIds - productId else favoriteIds + productId
@@ -216,6 +233,7 @@ fun AppNavigation() {
             UserRole.ADMIN -> Screen.ADMIN_DASHBOARD
         }
         reloadCatalog()
+        if (user.role == UserRole.BUYER) reloadOrders()
     }
 
     fun logout() {
@@ -223,6 +241,7 @@ fun AppNavigation() {
         currentUserId = null
         products = emptyList()
         reviews = emptyList()
+        buyerOrders = emptyList()
         favoriteIds = emptySet()
         currentScreen = Screen.AUTH
     }
@@ -288,13 +307,16 @@ fun AppNavigation() {
         Screen.PROFILE -> ProfileScreen(
             userName = currentUser?.name ?: "",
             userEmail = currentUser?.email ?: "",
-            orderCount = sellerOrders.count { it.customerName == buyerName } + dummyOrderHistory.size,
+            orderCount = buyerOrders.size,
             reviewCount = reviews.count { it.userName == buyerName },
             favoriteCount = favoriteProducts.size,
             appRating = appRating,
             onBack = { currentScreen = Screen.HOME },
             onLogout = { logout() },
-            onOrderHistoryClick = { currentScreen = Screen.ORDER_HISTORY },
+            onOrderHistoryClick = {
+                reloadOrders()
+                currentScreen = Screen.ORDER_HISTORY
+            },
             onFavoritesClick = { currentScreen = Screen.FAVORITES },
             onAddressesClick = { currentScreen = Screen.ADDRESSES },
             onNotificationsClick = { currentScreen = Screen.NOTIFICATION_SETTINGS },
@@ -345,7 +367,7 @@ fun AppNavigation() {
                     val existingItem = cartItems.find { it.product.id == product.id }
                     cartItems = if (existingItem != null) {
                         cartItems.map {
-                            if (it.product.id == product.id) it.copy(quantity = it.quantity + 1)
+                            if (it.product.id == product.id) it.copy(quantity = (it.quantity + 1).coerceAtMost(50))
                             else it
                         }
                     } else {
@@ -389,10 +411,17 @@ fun AppNavigation() {
             cartItems = cartItems,
             savedAddresses = addresses,
             onBack = { currentScreen = Screen.CART },
+            onPlaceOrder = { address, notes, payment ->
+                val result = OrderRepository.placeOrder(cartItems, address, notes, payment)
+                if (result.error != null) {
+                    result.error
+                } else {
+                    loadOrdersNow()
+                    selectedOrderId = result.codes.firstOrNull()
+                    null
+                }
+            },
             onOrderSuccess = {
-                val newOrders = createOrdersFromCart(cartItems, buyerName, sellerOrders.size)
-                sellerOrders = newOrders + sellerOrders
-                selectedOrderId = newOrders.firstOrNull()?.id
                 trackingBackTo = Screen.HOME
                 cartItems = emptyList()
                 currentScreen = Screen.ORDER_TRACKING
@@ -400,19 +429,21 @@ fun AppNavigation() {
         )
 
         Screen.ORDER_TRACKING -> {
-            val order = sellerOrders.find {
-                it.id == selectedOrderId && it.customerName == buyerName
-            }
+            LaunchedEffect(selectedOrderId) { loadOrdersNow() }
+            val order = buyerOrders.find { it.id == selectedOrderId }
             OrderTrackingScreen(
                 orderId = selectedOrderId ?: "-",
-                sellerName = order?.sellerName ?: "Dapur Bunda",
-                status = order?.status ?: OrderStatus.DONE,
+                sellerName = order?.sellerName ?: "-",
+                status = order?.status ?: OrderStatus.NEW,
                 onBack = { currentScreen = trackingBackTo }
             )
         }
 
         Screen.ORDER_HISTORY -> OrderHistoryScreen(
-            orders = sellerOrders.filter { it.customerName == buyerName },
+            orders = buyerOrders,
+            isLoading = ordersLoading,
+            errorMessage = ordersError,
+            onRetry = { reloadOrders() },
             onBack = { currentScreen = Screen.PROFILE },
             onTrackOrder = { orderId ->
                 selectedOrderId = orderId
