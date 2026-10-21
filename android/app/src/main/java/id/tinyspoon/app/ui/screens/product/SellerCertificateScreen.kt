@@ -22,6 +22,7 @@ import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.screens.home.dummyProducts
 import id.tinyspoon.app.ui.theme.*
 import id.tinyspoon.app.ui.screens.seller.ShopProfile
+import java.util.Locale
 
 data class SellerCertificate(
     val sellerName: String,
@@ -73,11 +74,15 @@ fun SellerCertificateScreen(
     sellerName: String,
     products: List<Product> = dummyProducts,
     shop: ShopProfile? = null,
-    certificate: SellerCertificate? = dummyCertificates[sellerName],
+    certificate: SellerCertificate? = null,
+    isLoading: Boolean = false,
     onBack: () -> Unit
 ) {
     val sellerProducts = products.filter { it.sellerName == sellerName }
     val scrollState = rememberScrollState()
+    val ratedProducts = sellerProducts.filter { it.rating > 0f }
+    val sellerRating = if (ratedProducts.isEmpty()) "-"
+    else String.format(Locale.US, "%.1f⭐", ratedProducts.map { it.rating }.average())
 
     Column(
         modifier = Modifier
@@ -161,14 +166,21 @@ fun SellerCertificateScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
                         SellerStat(value = "${sellerProducts.size}", label = "Produk")
-                        SellerStat(value = "4.8⭐", label = "Rating")
-                        SellerStat(value = "120+", label = "Pesanan")
+                        SellerStat(value = sellerRating, label = "Rating")
                     }
                 }
+            }
+
+            if (isLoading && shop == null && certificate == null) {
+                Text(
+                    text = "Memuat info toko...",
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             if (shop != null && shop.description.isNotBlank()) {

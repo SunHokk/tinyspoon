@@ -66,6 +66,9 @@ fun Product.matchesNutrition(option: String): Boolean = hasNutrition && when (op
 @Composable
 fun HomeScreen(
     products: List<Product> = dummyProducts,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
+    onRetry: () -> Unit = {},
     onProductClick: (Product) -> Unit,
     onProfileClick: () -> Unit
 ) {
@@ -323,7 +326,11 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        if (filteredProducts.isEmpty()) {
+        if (isLoading && products.isEmpty()) {
+            item { LoadingProducts() }
+        } else if (errorMessage != null && products.isEmpty()) {
+            item { ErrorProducts(message = errorMessage, onRetry = onRetry) }
+        } else if (filteredProducts.isEmpty()) {
             item {
                 EmptyResult(
                     onReset = {
@@ -500,5 +507,53 @@ fun AgeChip(text: String) {
             fontSize = 10.sp,
             color = OrangePrimary
         )
+    }
+}
+
+@Composable
+fun LoadingProducts() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        CircularProgressIndicator(color = OrangePrimary)
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(text = "Memuat produk...", fontSize = 13.sp, color = TextSecondary)
+    }
+}
+
+@Composable
+fun ErrorProducts(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "📡", fontSize = 48.sp)
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = message,
+            fontSize = 13.sp,
+            color = TextSecondary,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .border(1.dp, OrangePrimary, RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { onRetry() }
+                .padding(horizontal = 24.dp, vertical = 10.dp)
+        ) {
+            Text(
+                text = "Coba Lagi",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = OrangePrimary
+            )
+        }
     }
 }

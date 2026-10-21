@@ -82,6 +82,8 @@ import id.tinyspoon.app.ui.screens.product.CertStatus
 import id.tinyspoon.app.ui.screens.product.dummyCertificates
 import id.tinyspoon.app.ui.screens.admin.AdminUsersScreen
 import id.tinyspoon.app.ui.screens.admin.AdminVerificationScreen
+import id.tinyspoon.app.data.CatalogRepository
+import id.tinyspoon.app.data.ShopDetail
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -135,9 +137,12 @@ fun AppNavigation() {
     var certificates by remember { mutableStateOf(dummyCertificates) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
-    val seedReviews = remember { seedReviewsFor(dummyProducts) }
-    var reviews by remember { mutableStateOf(seedReviews) }
-    var products by remember { mutableStateOf(withRatingsFrom(dummyProducts, seedReviews)) }
+    var reviews by remember { mutableStateOf<List<Review>>(emptyList()) }
+    var products by remember { mutableStateOf<List<Product>>(emptyList()) }
+    var catalogLoading by remember { mutableStateOf(false) }
+    var catalogError by remember { mutableStateOf<String?>(null) }
+    var sellerDetail by remember { mutableStateOf<ShopDetail?>(null) }
+    var sellerDetailLoading by remember { mutableStateOf(false) }
     var sellerOrders by remember { mutableStateOf(dummySellerOrders) }
     var selectedOrderId by remember { mutableStateOf<String?>(null) }
     var trackingBackTo by remember { mutableStateOf(Screen.HOME) }
@@ -161,6 +166,36 @@ fun AppNavigation() {
     val visibleProducts = products.filter { isSellerVisible(it.sellerName) }
     val favoriteProducts = visibleProducts.filter { it.id in favoriteIds }
 
+    suspend fun loadCatalogNow() {
+        catalogLoading = true
+        catalogError = null
+        val result = CatalogRepository.loadCatalog()
+        result.data?.let {
+            products = it.products
+            reviews = it.reviews
+            favoriteIds = it.favoriteIds
+        }
+        catalogError = result.error
+        catalogLoading = false
+    }
+
+    fun reloadCatalog() {
+        scope.launch { loadCatalogNow() }
+    }
+
+    fun toggleFavorite(productId: String) {
+        val wasFavorite = productId in favoriteIds
+        favoriteIds = if (wasFavorite) favoriteIds - productId else favoriteIds + productId
+        scope.launch {
+            val ok = if (wasFavorite) CatalogRepository.removeFavorite(productId)
+            else CatalogRepository.addFavorite(productId)
+            if (!ok) {
+                favoriteIds = if (wasFavorite) favoriteIds + productId else favoriteIds - productId
+                Toast.makeText(context, "Gagal memperbarui favorit", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     fun enterSession(session: SessionUser) {
         val user = session.account
         accounts = accounts.filterNot { it.id == user.id } + user
@@ -180,11 +215,15 @@ fun AppNavigation() {
                 else Screen.SELLER_PENDING
             UserRole.ADMIN -> Screen.ADMIN_DASHBOARD
         }
+        reloadCatalog()
     }
 
     fun logout() {
         scope.launch { AuthRepository.signOut() }
         currentUserId = null
+        products = emptyList()
+        reviews = emptyList()
+        favoriteIds = emptySet()
         currentScreen = Screen.AUTH
     }
 
@@ -235,6 +274,9 @@ fun AppNavigation() {
 
         Screen.HOME -> HomeScreen(
             products = visibleProducts,
+            isLoading = catalogLoading,
+            errorMessage = catalogError,
+            onRetry = { reloadCatalog() },
             onProductClick = { product ->
                 selectedProduct = product
                 detailBackTo = Screen.HOME
@@ -290,19 +332,14 @@ fun AppNavigation() {
                 detailBackTo = Screen.FAVORITES
                 currentScreen = Screen.PRODUCT_DETAIL
             },
-            onRemoveFavorite = { product ->
-                favoriteIds = favoriteIds - product.id
-            }
+            onRemoveFavorite = { product -> toggleFavorite(product.id) }
         )
 
         Screen.PRODUCT_DETAIL -> selectedProduct?.let { product ->
             ProductDetailScreen(
                 product = product,
                 isFavorite = product.id in favoriteIds,
-                onToggleFavorite = {
-                    favoriteIds = if (product.id in favoriteIds) favoriteIds - product.id
-                    else favoriteIds + product.id
-                },
+                onToggleFavorite = { toggleFavorite(product.id) },
                 onBack = { currentScreen = detailBackTo },
                 onAddToCart = {
                     val existingItem = cartItems.find { it.product.id == product.id }
@@ -317,7 +354,15 @@ fun AppNavigation() {
                     cartBackTo = Screen.PRODUCT_DETAIL
                     currentScreen = Screen.CART
                 },
-                onSellerClick = { currentScreen = Screen.SELLER_CERTIFICATE },
+                onSellerClick = {
+                    sellerDetail = null
+                    sellerDetailLoading = true
+                    currentScreen = Screen.SELLER_CERTIFICATE
+                    scope.launch {
+                        sellerDetail = CatalogRepository.loadShopDetail(product.sellerName)
+                        sellerDetailLoading = false
+                    }
+                },
                 onReviewClick = { currentScreen = Screen.REVIEW }
             )
         }
@@ -398,22 +443,16 @@ fun AppNavigation() {
                 reviews = reviews.filter { it.productId == product.id },
                 onBack = { currentScreen = Screen.PRODUCT_DETAIL },
                 onSubmitReview = { rating, comment ->
-                    val newReview = Review(
-                        id = UUID.randomUUID().toString(),
-                        productId = product.id,
-                        userName = buyerName,
-                        rating = rating,
-                        comment = comment,
-                        date = todayLabel("d MMM yyyy"),
-                        babyAge = ""
-                    )
-                    val updatedReviews = listOf(newReview) + reviews.filterNot {
-                        it.productId == product.id && it.userName == buyerName
+                    scope.launch {
+                        val error = CatalogRepository.submitReview(product.id, rating, comment)
+                        if (error != null) {
+                            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                        } else {
+                            loadCatalogNow()
+                            selectedProduct = products.find { it.id == product.id } ?: product
+                            Toast.makeText(context, "Ulasan terkirim", Toast.LENGTH_SHORT).show()
+                        }
                     }
-                    val updatedProducts = withRatingsFrom(products, updatedReviews)
-                    reviews = updatedReviews
-                    products = updatedProducts
-                    selectedProduct = updatedProducts.find { it.id == product.id } ?: product
                 }
             )
         }
@@ -422,8 +461,9 @@ fun AppNavigation() {
             SellerCertificateScreen(
                 sellerName = product.sellerName,
                 products = products,
-                shop = shops[product.sellerName],
-                certificate = certificates[product.sellerName],
+                shop = sellerDetail?.shop,
+                certificate = sellerDetail?.certificate,
+                isLoading = sellerDetailLoading,
                 onBack = { currentScreen = Screen.PRODUCT_DETAIL }
             )
         }
