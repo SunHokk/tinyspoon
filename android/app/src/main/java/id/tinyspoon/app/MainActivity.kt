@@ -30,6 +30,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.runtime.rememberCoroutineScope
+import id.tinyspoon.app.data.AuthRepository
+import id.tinyspoon.app.data.SessionUser
+import kotlinx.coroutines.launch
 import id.tinyspoon.app.ui.screens.admin.AdminDashboardScreen
 import id.tinyspoon.app.ui.screens.auth.AuthScreen
 import id.tinyspoon.app.ui.screens.auth.SellerStatus
@@ -118,6 +122,14 @@ enum class Screen {
 @Composable
 fun AppNavigation() {
     var currentScreen by remember { mutableStateOf(Screen.SPLASH) }
+    val scope = rememberCoroutineScope()
+    var restoredUser by remember { mutableStateOf<SessionUser?>(null) }
+    var sessionChecked by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        restoredUser = AuthRepository.restoreSession()
+        sessionChecked = true
+    }
     var accounts by remember { mutableStateOf(dummyAccounts) }
     var currentUserId by remember { mutableStateOf<String?>(null) }
     var certificates by remember { mutableStateOf(dummyCertificates) }
@@ -149,13 +161,18 @@ fun AppNavigation() {
     val visibleProducts = products.filter { isSellerVisible(it.sellerName) }
     val favoriteProducts = visibleProducts.filter { it.id in favoriteIds }
 
-    fun enterSession(user: UserAccount) {
+    fun enterSession(session: SessionUser) {
+        val user = session.account
+        accounts = accounts.filterNot { it.id == user.id } + user
+        session.shop?.let { shop ->
+            if (shops[shop.name] == null) shops = shops + (shop.name to shop)
+        }
         currentUserId = user.id
         cartItems = emptyList()
         favoriteIds = emptySet()
         notifPrefs = NotificationPrefs()
         appRating = 0
-        addresses = if (user.id == "acc-buyer-1") dummyAddresses else emptyList()
+        addresses = emptyList()
         currentScreen = when (user.role) {
             UserRole.BUYER -> Screen.HOME
             UserRole.SELLER ->
@@ -166,6 +183,7 @@ fun AppNavigation() {
     }
 
     fun logout() {
+        scope.launch { AuthRepository.signOut() }
         currentUserId = null
         currentScreen = Screen.AUTH
     }
@@ -191,7 +209,11 @@ fun AppNavigation() {
 
     when (currentScreen) {
         Screen.SPLASH -> SplashScreen(
-            onFinished = { currentScreen = Screen.ONBOARDING }
+            ready = sessionChecked,
+            onFinished = {
+                val saved = restoredUser
+                if (saved != null) enterSession(saved) else currentScreen = Screen.ONBOARDING
+            }
         )
 
         Screen.ONBOARDING -> OnboardingScreen(
@@ -200,49 +222,14 @@ fun AppNavigation() {
 
         Screen.AUTH -> AuthScreen(
             onLogin = { email, password ->
-                val account = accounts.find {
-                    it.email.equals(email.trim(), ignoreCase = true) && it.password == password
-                }
-                if (account == null) {
-                    "Email atau password salah"
-                } else if (!account.isActive) {
-                    "Akun ini dinonaktifkan oleh admin"
-                } else {
-                    enterSession(account)
-                    null
-                }
+                val result = AuthRepository.signIn(email, password)
+                result.user?.let { enterSession(it) }
+                result.error
             },
             onRegister = { name, email, password, role, shopName ->
-                val trimmedShop = shopName.trim()
-                when {
-                    accounts.any { it.email.equals(email.trim(), ignoreCase = true) } ->
-                        "Email sudah terdaftar"
-                    role == UserRole.SELLER && shops.keys.any { it.equals(trimmedShop, ignoreCase = true) } ->
-                        "Nama toko sudah dipakai"
-                    else -> {
-                        val account = UserAccount(
-                            id = UUID.randomUUID().toString(),
-                            name = name.trim(),
-                            email = email.trim(),
-                            password = password,
-                            role = role,
-                            shopName = if (role == UserRole.SELLER) trimmedShop else null,
-                            sellerStatus = if (role == UserRole.SELLER) SellerStatus.PENDING else null
-                        )
-                        accounts = accounts + account
-                        if (role == UserRole.SELLER) {
-                            shops = shops + (trimmedShop to ShopProfile(
-                                name = trimmedShop,
-                                description = "",
-                                address = "",
-                                phone = "",
-                                openHours = ""
-                            ))
-                        }
-                        enterSession(account)
-                        null
-                    }
-                }
+                val result = AuthRepository.signUp(name, email, password, role, shopName)
+                result.user?.let { enterSession(it) }
+                result.error
             }
         )
 
@@ -626,13 +613,19 @@ private fun reorderItems(
 
 @Composable
 fun SplashScreen(
+    ready: Boolean,
     onFinished: () -> Unit
 ) {
     val brandColor = Color(0xFFFF6B35)
+    var minTimePassed by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         delay(2000)
-        onFinished()
+        minTimePassed = true
+    }
+
+    LaunchedEffect(minTimePassed, ready) {
+        if (minTimePassed && ready) onFinished()
     }
 
     Column(
