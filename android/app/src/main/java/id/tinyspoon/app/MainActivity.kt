@@ -86,6 +86,8 @@ import id.tinyspoon.app.data.CatalogRepository
 import id.tinyspoon.app.data.ShopDetail
 import id.tinyspoon.app.data.OrderRepository
 import id.tinyspoon.app.data.SellerRepository
+import id.tinyspoon.app.data.ProfileRepository
+import id.tinyspoon.app.ui.screens.profile.SavedAddress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -157,7 +159,8 @@ fun AppNavigation() {
     var favoriteIds by remember { mutableStateOf(setOf<String>()) }
     var detailBackTo by remember { mutableStateOf(Screen.HOME) }
     var cartBackTo by remember { mutableStateOf(Screen.HOME) }
-    var addresses by remember { mutableStateOf(dummyAddresses) }
+    var addresses by remember { mutableStateOf<List<SavedAddress>>(emptyList()) }
+    var myReviewCount by remember { mutableStateOf(0) }
     var notifPrefs by remember { mutableStateOf(NotificationPrefs()) }
     var appRating by remember { mutableStateOf(0) }
     var shops by remember { mutableStateOf(dummyShops) }
@@ -213,6 +216,19 @@ fun AppNavigation() {
         scope.launch { loadShopOrdersNow() }
     }
 
+    suspend fun loadProfileDataNow() {
+        ProfileRepository.loadProfileData()?.let {
+            addresses = it.addresses
+            notifPrefs = it.prefs
+            appRating = it.appRating
+            myReviewCount = it.reviewCount
+        }
+    }
+
+    fun reloadProfileData() {
+        scope.launch { loadProfileDataNow() }
+    }
+
     fun toggleFavorite(productId: String) {
         val wasFavorite = productId in favoriteIds
         favoriteIds = if (wasFavorite) favoriteIds - productId else favoriteIds + productId
@@ -239,6 +255,7 @@ fun AppNavigation() {
         notifPrefs = NotificationPrefs()
         appRating = 0
         addresses = emptyList()
+        myReviewCount = 0
         shopOrders = emptyList()
         currentScreen = when (user.role) {
             UserRole.BUYER -> Screen.HOME
@@ -248,7 +265,10 @@ fun AppNavigation() {
             UserRole.ADMIN -> Screen.ADMIN_DASHBOARD
         }
         reloadCatalog()
-        if (user.role == UserRole.BUYER) reloadOrders()
+        if (user.role == UserRole.BUYER) {
+            reloadOrders()
+            reloadProfileData()
+        }
         if (user.role == UserRole.SELLER && user.sellerStatus == SellerStatus.APPROVED) reloadShopOrders()
     }
 
@@ -259,6 +279,7 @@ fun AppNavigation() {
         reviews = emptyList()
         buyerOrders = emptyList()
         shopOrders = emptyList()
+        addresses = emptyList()
         favoriteIds = emptySet()
         currentScreen = Screen.AUTH
     }
@@ -318,14 +339,17 @@ fun AppNavigation() {
                 detailBackTo = Screen.HOME
                 currentScreen = Screen.PRODUCT_DETAIL
             },
-            onProfileClick = { currentScreen = Screen.PROFILE }
+            onProfileClick = {
+                reloadProfileData()
+                currentScreen = Screen.PROFILE
+            }
         )
 
         Screen.PROFILE -> ProfileScreen(
             userName = currentUser?.name ?: "",
             userEmail = currentUser?.email ?: "",
             orderCount = buyerOrders.size,
-            reviewCount = reviews.count { it.userName == buyerName },
+            reviewCount = myReviewCount,
             favoriteCount = favoriteProducts.size,
             appRating = appRating,
             onBack = { currentScreen = Screen.HOME },
@@ -338,24 +362,69 @@ fun AppNavigation() {
             onAddressesClick = { currentScreen = Screen.ADDRESSES },
             onNotificationsClick = { currentScreen = Screen.NOTIFICATION_SETTINGS },
             onAboutClick = { currentScreen = Screen.ABOUT },
-            onSubmitAppRating = { rating, _ ->
-                appRating = rating
-                Toast.makeText(context, "Terima kasih atas penilaianmu!", Toast.LENGTH_SHORT).show()
+            onSubmitAppRating = { rating, feedback ->
+                scope.launch {
+                    val error = ProfileRepository.submitAppRating(rating, feedback)
+                    if (error == null) {
+                        appRating = rating
+                        Toast.makeText(context, "Terima kasih atas penilaianmu!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Gagal mengirim: $error", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
         )
 
         Screen.ADDRESSES -> AddressScreen(
             addresses = addresses,
             onBack = { currentScreen = Screen.PROFILE },
-            onSaveAddress = { saved -> addresses = addresses.withSaved(saved) },
-            onDeleteAddress = { id -> addresses = addresses.withoutAddress(id) },
-            onSetDefault = { id -> addresses = addresses.withDefault(id) }
+            onSaveAddress = { saved ->
+                val isNew = addresses.none { it.id == saved.id }
+                addresses = addresses.withSaved(saved)
+                scope.launch {
+                    val error = ProfileRepository.saveAddress(saved, isNew)
+                    if (error != null) {
+                        Toast.makeText(context, "Gagal menyimpan: $error", Toast.LENGTH_LONG).show()
+                    }
+                    loadProfileDataNow()
+                }
+            },
+            onDeleteAddress = { id ->
+                addresses = addresses.withoutAddress(id)
+                scope.launch {
+                    val error = ProfileRepository.deleteAddress(id)
+                    if (error != null) {
+                        Toast.makeText(context, "Gagal menghapus: $error", Toast.LENGTH_LONG).show()
+                    }
+                    loadProfileDataNow()
+                }
+            },
+            onSetDefault = { id ->
+                addresses = addresses.withDefault(id)
+                scope.launch {
+                    val error = ProfileRepository.setDefaultAddress(id)
+                    if (error != null) {
+                        Toast.makeText(context, "Gagal mengubah alamat utama: $error", Toast.LENGTH_LONG).show()
+                    }
+                    loadProfileDataNow()
+                }
+            }
         )
 
         Screen.NOTIFICATION_SETTINGS -> NotificationSettingsScreen(
             prefs = notifPrefs,
             onBack = { currentScreen = Screen.PROFILE },
-            onPrefsChange = { notifPrefs = it }
+            onPrefsChange = { newPrefs ->
+                val old = notifPrefs
+                notifPrefs = newPrefs
+                scope.launch {
+                    val error = ProfileRepository.updatePrefs(newPrefs)
+                    if (error != null) {
+                        notifPrefs = old
+                        Toast.makeText(context, "Gagal menyimpan: $error", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         )
 
         Screen.ABOUT -> AboutScreen(
