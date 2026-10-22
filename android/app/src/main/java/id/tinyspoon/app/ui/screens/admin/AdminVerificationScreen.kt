@@ -31,6 +31,7 @@ fun AdminVerificationScreen(
     certificates: Map<String, SellerCertificate>,
     onApprove: (String) -> Unit,
     onReject: (String, String) -> Unit,
+    onViewDocument: (String) -> Unit,
     onBack: () -> Unit
 ) {
     val sellers = accounts.filter { it.role == UserRole.SELLER }
@@ -103,7 +104,8 @@ fun AdminVerificationScreen(
                             account = account,
                             certificate = certificate,
                             onApprove = { onApprove(account.id) },
-                            onReject = { rejectTarget = account }
+                            onReject = { rejectTarget = account },
+                            onViewDocument = { account.shopName?.let(onViewDocument) }
                         )
                     } else {
                         Card(
@@ -213,7 +215,8 @@ private fun VerificationCard(
     account: UserAccount,
     certificate: SellerCertificate,
     onApprove: () -> Unit,
-    onReject: () -> Unit
+    onReject: () -> Unit,
+    onViewDocument: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -245,6 +248,14 @@ private fun VerificationCard(
             CertDetail(label = "Tanggal Terbit", value = certificate.issuedDate)
             CertDetail(label = "Berlaku Hingga", value = certificate.expiredDate)
             CertDetail(label = "Dokumen", value = "📎 ${certificate.documentName}")
+
+            Spacer(modifier = Modifier.height(4.dp))
+            ActionButton(
+                text = "Lihat Dokumen",
+                color = OrangePrimary,
+                onClick = onViewDocument,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 10.dp),

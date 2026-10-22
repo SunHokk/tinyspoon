@@ -31,6 +31,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.runtime.rememberCoroutineScope
+import android.content.Intent
+import android.net.Uri
+import id.tinyspoon.app.data.AdminRepository
+import id.tinyspoon.app.ui.screens.product.SellerCertificate
 import id.tinyspoon.app.data.AuthRepository
 import id.tinyspoon.app.data.SessionUser
 import kotlinx.coroutines.launch
@@ -161,6 +165,10 @@ fun AppNavigation() {
     var cartBackTo by remember { mutableStateOf(Screen.HOME) }
     var addresses by remember { mutableStateOf<List<SavedAddress>>(emptyList()) }
     var myReviewCount by remember { mutableStateOf(0) }
+    var adminAccounts by remember { mutableStateOf<List<UserAccount>>(emptyList()) }
+    var adminCertificates by remember { mutableStateOf<Map<String, SellerCertificate>>(emptyMap()) }
+    var adminDocPaths by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var adminOrders by remember { mutableStateOf<List<SellerOrder>>(emptyList()) }
     var notifPrefs by remember { mutableStateOf(NotificationPrefs()) }
     var appRating by remember { mutableStateOf(0) }
     var shops by remember { mutableStateOf(dummyShops) }
@@ -229,6 +237,19 @@ fun AppNavigation() {
         scope.launch { loadProfileDataNow() }
     }
 
+    suspend fun loadAdminDataNow() {
+        AdminRepository.loadAdminData()?.let {
+            adminAccounts = it.accounts
+            adminCertificates = it.certificates
+            adminDocPaths = it.documentPaths
+        }
+        OrderRepository.loadMyOrders().orders?.let { adminOrders = it }
+    }
+
+    fun reloadAdminData() {
+        scope.launch { loadAdminDataNow() }
+    }
+
     fun toggleFavorite(productId: String) {
         val wasFavorite = productId in favoriteIds
         favoriteIds = if (wasFavorite) favoriteIds - productId else favoriteIds + productId
@@ -270,6 +291,7 @@ fun AppNavigation() {
             reloadProfileData()
         }
         if (user.role == UserRole.SELLER && user.sellerStatus == SellerStatus.APPROVED) reloadShopOrders()
+        if (user.role == UserRole.ADMIN) reloadAdminData()
     }
 
     fun logout() {
@@ -279,6 +301,10 @@ fun AppNavigation() {
         reviews = emptyList()
         buyerOrders = emptyList()
         shopOrders = emptyList()
+        adminAccounts = emptyList()
+        adminCertificates = emptyMap()
+        adminDocPaths = emptyMap()
+        adminOrders = emptyList()
         addresses = emptyList()
         favoriteIds = emptySet()
         currentScreen = Screen.AUTH
@@ -625,54 +651,84 @@ fun AppNavigation() {
         )
 
         Screen.ADMIN_DASHBOARD -> AdminDashboardScreen(
-            accounts = accounts,
+            accounts = adminAccounts,
             products = products,
-            orders = sellerOrders,
+            orders = adminOrders,
             reviews = reviews,
-            onOpenVerification = { currentScreen = Screen.ADMIN_VERIFICATION },
-            onOpenUsers = { currentScreen = Screen.ADMIN_USERS },
+            onOpenVerification = {
+                reloadAdminData()
+                currentScreen = Screen.ADMIN_VERIFICATION
+            },
+            onOpenUsers = {
+                reloadAdminData()
+                currentScreen = Screen.ADMIN_USERS
+            },
             onLogout = { logout() }
         )
 
         Screen.ADMIN_USERS -> AdminUsersScreen(
-            accounts = accounts,
+            accounts = adminAccounts,
             onToggleActive = { accountId, active ->
-                accounts = accounts.map {
-                    if (it.id == accountId) it.copy(isActive = active) else it
+                scope.launch {
+                    val error = AdminRepository.setUserActive(accountId, active)
+                    if (error == null) {
+                        Toast.makeText(
+                            context,
+                            if (active) "Akun diaktifkan" else "Akun dinonaktifkan",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        Toast.makeText(context, "Gagal: $error", Toast.LENGTH_LONG).show()
+                    }
+                    loadAdminDataNow()
                 }
-                Toast.makeText(
-                    context,
-                    if (active) "Akun diaktifkan" else "Akun dinonaktifkan",
-                    Toast.LENGTH_SHORT
-                ).show()
             },
             onBack = { currentScreen = Screen.ADMIN_DASHBOARD }
         )
 
         Screen.ADMIN_VERIFICATION -> AdminVerificationScreen(
-            accounts = accounts,
-            certificates = certificates,
+            accounts = adminAccounts,
+            certificates = adminCertificates,
             onApprove = { accountId ->
-                val shop = accounts.find { it.id == accountId }?.shopName
-                accounts = accounts.map {
-                    if (it.id == accountId) {
-                        it.copy(sellerStatus = SellerStatus.APPROVED, rejectionReason = null)
-                    } else it
-                }
-                if (shop != null) {
-                    certificates[shop]?.let { cert ->
-                        certificates = certificates + (shop to cert.copy(status = CertStatus.ACTIVE))
+                scope.launch {
+                    val error = AdminRepository.reviewShop(accountId, true, null)
+                    if (error == null) {
+                        Toast.makeText(context, "Penjual disetujui", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Gagal: $error", Toast.LENGTH_LONG).show()
                     }
+                    loadAdminDataNow()
                 }
-                Toast.makeText(context, "Penjual disetujui", Toast.LENGTH_SHORT).show()
             },
             onReject = { accountId, reason ->
-                accounts = accounts.map {
-                    if (it.id == accountId) {
-                        it.copy(sellerStatus = SellerStatus.REJECTED, rejectionReason = reason)
-                    } else it
+                scope.launch {
+                    val error = AdminRepository.reviewShop(accountId, false, reason)
+                    if (error == null) {
+                        Toast.makeText(context, "Pengajuan ditolak", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Gagal: $error", Toast.LENGTH_LONG).show()
+                    }
+                    loadAdminDataNow()
                 }
-                Toast.makeText(context, "Pengajuan ditolak", Toast.LENGTH_SHORT).show()
+            },
+            onViewDocument = { shopName ->
+                val path = adminDocPaths[shopName]
+                if (path == null) {
+                    Toast.makeText(context, "Dokumen tidak ditemukan", Toast.LENGTH_SHORT).show()
+                } else {
+                    scope.launch {
+                        val url = AdminRepository.createDocumentUrl(path)
+                        if (url == null) {
+                            Toast.makeText(context, "Gagal membuka dokumen", Toast.LENGTH_SHORT).show()
+                        } else {
+                            try {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Tidak ada aplikasi untuk membuka dokumen", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
             },
             onBack = { currentScreen = Screen.ADMIN_DASHBOARD }
         )
