@@ -114,7 +114,6 @@ object AdminRepository {
                     id = p.id,
                     name = p.name,
                     email = p.email,
-                    password = "",
                     role = when (p.role) {
                         "SELLER" -> UserRole.SELLER
                         "ADMIN" -> UserRole.ADMIN

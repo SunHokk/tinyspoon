@@ -19,7 +19,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.tinyspoon.app.ui.screens.home.Product
-import id.tinyspoon.app.ui.screens.home.dummyProducts
 import id.tinyspoon.app.ui.theme.*
 import id.tinyspoon.app.ui.screens.seller.ShopProfile
 import java.util.Locale
@@ -39,40 +38,10 @@ enum class CertStatus {
     ACTIVE, EXPIRED, PENDING
 }
 
-val dummyCertificates = mapOf(
-    "Dapur Bunda" to SellerCertificate(
-        sellerName = "Dapur Bunda",
-        certNumber = "BPOM-MPASI-2024-001234",
-        issuedBy = "BPOM (Badan Pengawas Obat dan Makanan)",
-        issuedDate = "01 Januari 2024",
-        expiredDate = "31 Desember 2027",
-        certType = "Sertifikat Produksi Pangan Industri Rumah Tangga",
-        status = CertStatus.ACTIVE
-    ),
-    "MPASI Sehat" to SellerCertificate(
-        sellerName = "MPASI Sehat",
-        certNumber = "BPOM-MPASI-2024-005678",
-        issuedBy = "BPOM (Badan Pengawas Obat dan Makanan)",
-        issuedDate = "15 Maret 2024",
-        expiredDate = "14 Maret 2027",
-        certType = "Sertifikat Produksi Pangan Industri Rumah Tangga",
-        status = CertStatus.ACTIVE
-    ),
-    "Nutrisi Bayi" to SellerCertificate(
-        sellerName = "Nutrisi Bayi",
-        certNumber = "BPOM-MPASI-2023-009012",
-        issuedBy = "BPOM (Badan Pengawas Obat dan Makanan)",
-        issuedDate = "10 Juni 2023",
-        expiredDate = "09 Juni 2027",
-        certType = "Sertifikat Halal & Produksi Pangan",
-        status = CertStatus.ACTIVE
-    )
-)
-
 @Composable
 fun SellerCertificateScreen(
     sellerName: String,
-    products: List<Product> = dummyProducts,
+    products: List<Product>,
     shop: ShopProfile? = null,
     certificate: SellerCertificate? = null,
     isLoading: Boolean = false,

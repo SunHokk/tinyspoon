@@ -45,18 +45,9 @@ data class SellerOrder(
     val items: String,
     val total: Int,
     val status: OrderStatus,
-    val sellerName: String = "Dapur Bunda",
+    val sellerName: String,
     val date: String = "",
     val deliveryFee: Int = 0
-)
-
-val dummySellerOrders = listOf(
-    SellerOrder("TS-20240920-001", "Bunda Sari", "Bubur Ayam Sayuran x2", 50000, OrderStatus.NEW),
-    SellerOrder("TS-20240920-002", "Mama Rara", "Tim Ikan Salmon x1", 35000, OrderStatus.COOKING),
-    SellerOrder("TS-20240920-003", "Ibu Dewi", "Puree Wortel x3", 60000, OrderStatus.DONE),
-    SellerOrder("TS-20240920-004", "Kak Anisa", "Nasi Lembek Ayam x1, Bubur Kacang Hijau x1", 46000, OrderStatus.NEW),
-    SellerOrder("TS-20240920-005", "Mbak Tiara", "Nasi Tim Hati Ayam x2", 60000, OrderStatus.SHIPPING),
-    SellerOrder("TS-20240919-006", "Ibu Maya", "Bubur Ayam Sayuran x1", 25000, OrderStatus.DONE),
 )
 
 @Composable

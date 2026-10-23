@@ -161,7 +161,6 @@ object AuthRepository {
             id = profile.id,
             name = profile.name,
             email = profile.email,
-            password = "",
             role = role,
             shopName = shop?.name,
             sellerStatus = shop?.let {

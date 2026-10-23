@@ -18,10 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import id.tinyspoon.app.ui.screens.home.Product
 import id.tinyspoon.app.ui.theme.*
 import java.util.Locale
-import kotlin.math.roundToInt
 
 data class Review(
     val id: String,
@@ -33,36 +31,8 @@ data class Review(
     val babyAge: String
 )
 
-private val sampleReviews = listOf(
-    Review("", "", "Bunda Sari", 5, "MPASI-nya enak banget! Anak saya langsung suka dan habis 1 porsi. Teksturnya juga pas untuk usia 7 bulan.", "20 Sep 2024", "7 bulan"),
-    Review("", "", "Mama Rara", 5, "Bahan-bahannya segar dan bergizi. Packaging juga rapi dan higienis. Recommended banget!", "18 Sep 2024", "8 bulan"),
-    Review("", "", "Ibu Dewi", 4, "Rasanya enak dan anak saya suka. Tapi pengirimannya agak lama, semoga bisa lebih cepat.", "15 Sep 2024", "6 bulan"),
-    Review("", "", "Bunda Tika", 5, "Udah berlangganan 3 bulan, selalu puas! Nutrisinya lengkap dan anak jadi lebih sehat.", "10 Sep 2024", "9 bulan"),
-    Review("", "", "Mama Cici", 4, "Produknya bagus dan terpercaya karena ada sertifikat BPOM-nya. Harga juga wajar.", "5 Sep 2024", "7 bulan"),
-)
-
-fun seedReviewsFor(products: List<Product>): List<Review> =
-    products.flatMap { product ->
-        val fives = ((product.rating - 4f) * sampleReviews.size).roundToInt()
-            .coerceIn(0, sampleReviews.size)
-        sampleReviews.mapIndexed { index, sample ->
-            sample.copy(
-                id = "seed-${product.id}-$index",
-                productId = product.id,
-                rating = if (index < fives) 5 else 4
-            )
-        }
-    }
-
 fun List<Review>.averageRating(): Float =
     if (isEmpty()) 0f else sumOf { it.rating }.toFloat() / size
-
-fun withRatingsFrom(products: List<Product>, reviews: List<Review>): List<Product> =
-    products.map { product ->
-        val own = reviews.filter { it.productId == product.id }
-        if (own.isEmpty()) product
-        else product.copy(rating = (own.averageRating() * 10).roundToInt() / 10f)
-    }
 
 @Composable
 fun ReviewScreen(

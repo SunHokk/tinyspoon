@@ -30,41 +30,6 @@ data class OrderHistory(
     val canTrack: Boolean = false
 )
 
-val dummyOrderHistory = listOf(
-    OrderHistory(
-        orderId = "TS-20240920-001",
-        date = "20 September 2024",
-        items = listOf("Bubur Ayam Sayuran x1", "Puree Wortel Kentang x2"),
-        total = 65000,
-        status = "Selesai",
-        statusColor = 0xFF4CAF50
-    ),
-    OrderHistory(
-        orderId = "TS-20240918-002",
-        date = "18 September 2024",
-        items = listOf("Tim Ikan Salmon x1"),
-        total = 35000,
-        status = "Selesai",
-        statusColor = 0xFF4CAF50
-    ),
-    OrderHistory(
-        orderId = "TS-20240915-003",
-        date = "15 September 2024",
-        items = listOf("Nasi Lembek Ayam x1", "Bubur Kacang Hijau x1"),
-        total = 46000,
-        status = "Dibatalkan",
-        statusColor = 0xFFE53935
-    ),
-    OrderHistory(
-        orderId = "TS-20240910-004",
-        date = "10 September 2024",
-        items = listOf("Sup Sayuran Mix x2"),
-        total = 44000,
-        status = "Selesai",
-        statusColor = 0xFF4CAF50
-    ),
-)
-
 private fun SellerOrder.toHistory(): OrderHistory = OrderHistory(
     orderId = id,
     date = date,

@@ -40,17 +40,6 @@ data class Product(
 val Product.hasNutrition: Boolean
     get() = protein + carbs + fat + fiber > 0
 
-val dummyProducts = listOf(
-    Product("1", "Bubur Ayam Sayuran", 25000, "Dapur Bunda", "6-8 bulan", "Halus", 4.8f, "🍚", emptyList(), 6, 18, 3, 2),
-    Product("2", "Puree Wortel Kentang", 20000, "MPASI Sehat", "6-8 bulan", "Halus", 4.6f, "🥕", listOf("Susu"), 2, 15, 1, 3),
-    Product("3", "Tim Ikan Salmon", 35000, "Nutrisi Bayi", "9-11 bulan", "Lembut", 4.9f, "🐟", listOf("Seafood"), 12, 14, 6, 1),
-    Product("4", "Nasi Lembek Ayam", 28000, "Dapur Bunda", "9-11 bulan", "Lembut", 4.7f, "🍗", listOf("Telur"), 9, 22, 4, 1),
-    Product("5", "Bubur Kacang Hijau", 18000, "MPASI Sehat", "6-8 bulan", "Halus", 4.5f, "🌱", listOf("Kacang"), 5, 20, 2, 6),
-    Product("6", "Sup Sayuran Mix", 22000, "Nutrisi Bayi", "12+ bulan", "Kasar", 4.8f, "🥦", listOf("Gluten"), 4, 12, 2, 5),
-    Product("7", "Nasi Tim Hati Ayam", 30000, "Dapur Bunda", "9-11 bulan", "Lembut", 4.7f, "🍱", listOf("Telur"), 10, 21, 5, 1),
-    Product("8", "Puree Labu Kuning", 19000, "MPASI Sehat", "6-8 bulan", "Halus", 4.6f, "🎃", listOf("Susu"), 1, 13, 1, 3),
-)
-
 val ageCategories = listOf("Semua", "6-8 bulan", "9-11 bulan", "12+ bulan")
 val textureCategories = listOf("Semua", "Halus", "Lembut", "Kasar")
 val allergenOptions = listOf("Susu", "Telur", "Kacang", "Gluten", "Seafood")
@@ -65,7 +54,7 @@ fun Product.matchesNutrition(option: String): Boolean = hasNutrition && when (op
 
 @Composable
 fun HomeScreen(
-    products: List<Product> = dummyProducts,
+    products: List<Product>,
     isLoading: Boolean = false,
     errorMessage: String? = null,
     onRetry: () -> Unit = {},

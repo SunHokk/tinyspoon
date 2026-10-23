@@ -43,31 +43,24 @@ import id.tinyspoon.app.ui.screens.auth.AuthScreen
 import id.tinyspoon.app.ui.screens.auth.SellerStatus
 import id.tinyspoon.app.ui.screens.auth.UserAccount
 import id.tinyspoon.app.ui.screens.auth.UserRole
-import id.tinyspoon.app.ui.screens.auth.dummyAccounts
 import id.tinyspoon.app.ui.screens.cart.CartItem
 import id.tinyspoon.app.ui.screens.cart.CartScreen
 import id.tinyspoon.app.ui.screens.home.HomeScreen
 import id.tinyspoon.app.ui.screens.home.Product
-import id.tinyspoon.app.ui.screens.home.dummyProducts
 import id.tinyspoon.app.ui.screens.onboarding.OnboardingScreen
 import id.tinyspoon.app.ui.screens.order.CheckoutScreen
-import id.tinyspoon.app.ui.screens.order.DELIVERY_FEE_PER_SELLER
 import id.tinyspoon.app.ui.screens.order.OrderHistoryScreen
 import id.tinyspoon.app.ui.screens.order.OrderTrackingScreen
-import id.tinyspoon.app.ui.screens.order.dummyOrderHistory
 import id.tinyspoon.app.ui.screens.product.ProductDetailScreen
 import id.tinyspoon.app.ui.screens.product.Review
 import id.tinyspoon.app.ui.screens.product.ReviewScreen
 import id.tinyspoon.app.ui.screens.product.SellerCertificateScreen
-import id.tinyspoon.app.ui.screens.product.seedReviewsFor
-import id.tinyspoon.app.ui.screens.product.withRatingsFrom
 import id.tinyspoon.app.ui.screens.profile.AboutScreen
 import id.tinyspoon.app.ui.screens.profile.AddressScreen
 import id.tinyspoon.app.ui.screens.profile.FavoritesScreen
 import id.tinyspoon.app.ui.screens.profile.NotificationPrefs
 import id.tinyspoon.app.ui.screens.profile.NotificationSettingsScreen
 import id.tinyspoon.app.ui.screens.profile.ProfileScreen
-import id.tinyspoon.app.ui.screens.profile.dummyAddresses
 import id.tinyspoon.app.ui.screens.profile.withDefault
 import id.tinyspoon.app.ui.screens.profile.withSaved
 import id.tinyspoon.app.ui.screens.profile.withoutAddress
@@ -79,11 +72,8 @@ import id.tinyspoon.app.ui.screens.seller.SellerPendingScreen
 import id.tinyspoon.app.ui.screens.seller.SellerProductsScreen
 import id.tinyspoon.app.ui.screens.seller.SellerShopProfileScreen
 import id.tinyspoon.app.ui.screens.seller.ShopProfile
-import id.tinyspoon.app.ui.screens.seller.dummySellerOrders
-import id.tinyspoon.app.ui.screens.seller.dummyShops
 import id.tinyspoon.app.ui.theme.TinySpoonTheme
 import id.tinyspoon.app.ui.screens.product.CertStatus
-import id.tinyspoon.app.ui.screens.product.dummyCertificates
 import id.tinyspoon.app.ui.screens.admin.AdminUsersScreen
 import id.tinyspoon.app.ui.screens.admin.AdminVerificationScreen
 import id.tinyspoon.app.data.CatalogRepository
@@ -94,10 +84,6 @@ import id.tinyspoon.app.data.ProfileRepository
 import id.tinyspoon.app.ui.screens.profile.SavedAddress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-import java.util.UUID
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -142,9 +128,10 @@ fun AppNavigation() {
         restoredUser = AuthRepository.restoreSession()
         sessionChecked = true
     }
-    var accounts by remember { mutableStateOf(dummyAccounts) }
+    var accounts by remember { mutableStateOf<List<UserAccount>>(emptyList()) }
     var currentUserId by remember { mutableStateOf<String?>(null) }
-    var certificates by remember { mutableStateOf(dummyCertificates) }
+    var certificates by remember { mutableStateOf<Map<String, SellerCertificate>>(emptyMap()) }
+    var shops by remember { mutableStateOf<Map<String, ShopProfile>>(emptyMap()) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var cartItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
     var reviews by remember { mutableStateOf<List<Review>>(emptyList()) }
@@ -153,7 +140,6 @@ fun AppNavigation() {
     var catalogError by remember { mutableStateOf<String?>(null) }
     var sellerDetail by remember { mutableStateOf<ShopDetail?>(null) }
     var sellerDetailLoading by remember { mutableStateOf(false) }
-    var sellerOrders by remember { mutableStateOf(dummySellerOrders) }
     var shopOrders by remember { mutableStateOf<List<SellerOrder>>(emptyList()) }
     var buyerOrders by remember { mutableStateOf<List<SellerOrder>>(emptyList()) }
     var ordersLoading by remember { mutableStateOf(false) }
@@ -171,10 +157,8 @@ fun AppNavigation() {
     var adminOrders by remember { mutableStateOf<List<SellerOrder>>(emptyList()) }
     var notifPrefs by remember { mutableStateOf(NotificationPrefs()) }
     var appRating by remember { mutableStateOf(0) }
-    var shops by remember { mutableStateOf(dummyShops) }
     val context = LocalContext.current
     val currentUser = accounts.find { it.id == currentUserId }
-    val buyerName = currentUser?.takeIf { it.role == UserRole.BUYER }?.name ?: ""
     val currentSellerName = currentUser?.takeIf { it.role == UserRole.SELLER }?.shopName ?: ""
 
     fun isSellerVisible(shopName: String): Boolean {
@@ -811,35 +795,6 @@ fun AppNavigation() {
         }
     }
 }
-
-private fun createOrdersFromCart(
-    cartItems: List<CartItem>,
-    buyerName: String,
-    existingCount: Int
-): List<SellerOrder> {
-    val today = LocalDate.now()
-    val datePart = today.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-    val dateLabel = today.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("id", "ID")))
-
-    return cartItems
-        .groupBy { it.product.sellerName }
-        .entries
-        .mapIndexed { index, (sellerName, items) ->
-            SellerOrder(
-                id = "TS-$datePart-${(existingCount + index + 1).toString().padStart(3, '0')}",
-                customerName = buyerName,
-                items = items.joinToString(", ") { "${it.product.name} x${it.quantity}" },
-                total = items.sumOf { it.product.price * it.quantity },
-                status = OrderStatus.NEW,
-                sellerName = sellerName,
-                date = dateLabel,
-                deliveryFee = DELIVERY_FEE_PER_SELLER
-            )
-        }
-}
-
-private fun todayLabel(pattern: String): String =
-    LocalDate.now().format(DateTimeFormatter.ofPattern(pattern, Locale("id", "ID")))
 
 private fun reorderItems(
     itemLines: List<String>,
