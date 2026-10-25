@@ -18,13 +18,14 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import id.tinyspoon.app.ui.screens.home.CategoryChip
 import id.tinyspoon.app.ui.theme.*
 
 @Composable
 fun AuthScreen(
-    onLogin: (email: String, password: String) -> String?,
-    onRegister: (name: String, email: String, password: String, role: UserRole, shopName: String) -> String?
+    onLogin: suspend (email: String, password: String) -> String?,
+    onRegister: suspend (name: String, email: String, password: String, role: UserRole, shopName: String) -> String?
 ) {
     var isLogin by remember { mutableStateOf(true) }
 
@@ -136,7 +137,7 @@ fun TabButton(
 }
 
 @Composable
-fun LoginForm(onLogin: (String, String) -> String?) {
+fun LoginForm(onLogin: suspend (String, String) -> String?) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -144,7 +145,8 @@ fun LoginForm(onLogin: (String, String) -> String?) {
     var passwordError by remember { mutableStateOf<String?>(null) }
     var formError by remember { mutableStateOf<String?>(null) }
     var showForgotPassword by remember { mutableStateOf(false) }
-    var showDemo by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     fun validate(): Boolean {
         var isValid = true
@@ -226,66 +228,18 @@ fun LoginForm(onLogin: (String, String) -> String?) {
         Spacer(modifier = Modifier.height(4.dp))
 
         TinySpoonButton(
-            text = "Masuk",
+            text = if (isLoading) "Memproses..." else "Masuk",
+            enabled = !isLoading,
             onClick = {
                 if (validate()) {
-                    formError = onLogin(email, password)
-                }
-            }
-        )
-
-        Text(
-            text = if (showDemo) "Sembunyikan akun demo" else "Lihat akun demo",
-            color = OrangePrimary,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .clickable { showDemo = !showDemo }
-                .padding(vertical = 8.dp)
-        )
-
-        if (showDemo) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(OrangePrimaryLight, RoundedCornerShape(12.dp))
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = "Ketuk akun untuk mengisi otomatis",
-                    fontSize = 11.sp,
-                    color = TextSecondary
-                )
-                dummyAccounts.forEach { account ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                email = account.email
-                                password = account.password
-                                emailError = null
-                                passwordError = null
-                                formError = null
-                            }
-                    ) {
-                        Text(
-                            text = account.role.label +
-                                    (account.shopName?.let { " • $it" } ?: ""),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "${account.email} / ${account.password}",
-                            fontSize = 11.sp,
-                            color = TextSecondary
-                        )
+                    scope.launch {
+                        isLoading = true
+                        formError = onLogin(email, password)
+                        isLoading = false
                     }
                 }
             }
-        }
+        )
     }
 }
 
@@ -370,7 +324,7 @@ fun ForgotPasswordDialog(
 
 @Composable
 fun RegisterForm(
-    onRegister: (String, String, String, UserRole, String) -> String?
+    onRegister: suspend (String, String, String, UserRole, String) -> String?
 ) {
     var role by remember { mutableStateOf(UserRole.BUYER) }
     var name by remember { mutableStateOf("") }
@@ -386,6 +340,8 @@ fun RegisterForm(
     var passwordError by remember { mutableStateOf<String?>(null) }
     var confirmPasswordError by remember { mutableStateOf<String?>(null) }
     var formError by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     fun validate(): Boolean {
         var isValid = true
@@ -551,10 +507,15 @@ fun RegisterForm(
         Spacer(modifier = Modifier.height(4.dp))
 
         TinySpoonButton(
-            text = "Daftar",
+            text = if (isLoading) "Memproses..." else "Daftar",
+            enabled = !isLoading,
             onClick = {
                 if (validate()) {
-                    formError = onRegister(name, email, password, role, shopName)
+                    scope.launch {
+                        isLoading = true
+                        formError = onRegister(name, email, password, role, shopName)
+                        isLoading = false
+                    }
                 }
             }
         )
@@ -614,10 +575,12 @@ fun TinySpoonTextField(
 fun TinySpoonButton(
     text: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
             .height(52.dp),

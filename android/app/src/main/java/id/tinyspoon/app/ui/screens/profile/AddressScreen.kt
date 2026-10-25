@@ -34,10 +34,6 @@ data class SavedAddress(
 
 fun SavedAddress.asDeliveryText(): String = "$recipient\n$fullAddress"
 
-val dummyAddresses = listOf(
-    SavedAddress("addr-1", "Rumah", "Gilbert", "Jl. Kemang Raya No. 10, Jakarta Selatan", true)
-)
-
 val addressLabels = listOf("Rumah", "Kantor", "Lainnya")
 
 private fun List<SavedAddress>.normalizeDefault(preferredId: String?): List<SavedAddress> {

@@ -1,0 +1,24 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "seed": "node --env-file=.env scripts/seed.mjs",
+    "test:auth": "node --env-file=.env scripts/test-auth.mjs",
+    "test:catalog": "node --env-file=.env scripts/test-catalog.mjs",
+    "test:orders": "node --env-file=.env scripts/test-orders.mjs",
+    "test:profile": "node --env-file=.env scripts/test-profile.mjs",
+    "test:admin": "node --env-file=.env scripts/test-admin.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "supabase": "^2.120.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3"
+  }
+}

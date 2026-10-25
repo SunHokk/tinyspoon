@@ -1,0 +1,278 @@
+import { createClient } from '@supabase/supabase-js'
+
+const {
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
+  SEED_DEMO_PASSWORD,
+  SEED_ADMIN_PASSWORD,
+} = process.env
+
+function requireEnv(name, value, minLength = 1) {
+  if (!value || value.length < minLength) {
+    console.error(
+      `Isi ${name} di backend/.env${minLength > 1 ? ` (minimal ${minLength} karakter)` : ''}`
+    )
+    process.exit(1)
+  }
+}
+
+requireEnv('SUPABASE_URL', SUPABASE_URL)
+requireEnv('SUPABASE_SERVICE_ROLE_KEY', SUPABASE_SERVICE_ROLE_KEY)
+requireEnv('SEED_DEMO_PASSWORD', SEED_DEMO_PASSWORD, 10)
+requireEnv('SEED_ADMIN_PASSWORD', SEED_ADMIN_PASSWORD, 10)
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+})
+
+const accounts = [
+  {
+    email: 'gilbert@email.com',
+    name: 'Gilbert',
+    role: 'BUYER',
+    password: SEED_DEMO_PASSWORD,
+  },
+  {
+    email: 'dapurbunda@email.com',
+    name: 'Bunda Lia',
+    role: 'SELLER',
+    password: SEED_DEMO_PASSWORD,
+    shop: {
+      name: 'Dapur Bunda',
+      description:
+        'Dapur rumahan yang menyiapkan MPASI segar setiap hari tanpa pengawet, dimasak sesuai tahapan usia bayi.',
+      address: 'Jl. Cipete Raya No. 25, Jakarta Selatan',
+      phone: '081234567890',
+      open_hours: '07.00 - 17.00',
+    },
+    certificate: {
+      type: 'Sertifikat Produksi Pangan Industri Rumah Tangga',
+      number: 'BPOM-MPASI-2024-001234',
+      issued_by: 'BPOM (Badan Pengawas Obat dan Makanan)',
+      issued_date: '2024-01-01',
+      expired_date: '2027-12-31',
+    },
+  },
+  {
+    email: 'mpasisehat@email.com',
+    name: 'Pak Dimas',
+    role: 'SELLER',
+    password: SEED_DEMO_PASSWORD,
+    shop: {
+      name: 'MPASI Sehat',
+      description:
+        'Spesialis puree dan bubur sayur-buah dengan bahan organik pilihan untuk si kecil.',
+      address: 'Jl. Fatmawati No. 8, Jakarta Selatan',
+      phone: '081298765432',
+      open_hours: '08.00 - 16.00',
+    },
+    certificate: {
+      type: 'Sertifikat Produksi Pangan Industri Rumah Tangga',
+      number: 'BPOM-MPASI-2024-005678',
+      issued_by: 'BPOM (Badan Pengawas Obat dan Makanan)',
+      issued_date: '2024-03-15',
+      expired_date: '2027-03-14',
+    },
+  },
+  {
+    email: 'nutrisibayi@email.com',
+    name: 'Bu Rani',
+    role: 'SELLER',
+    password: SEED_DEMO_PASSWORD,
+    shop: {
+      name: 'Nutrisi Bayi',
+      description:
+        'MPASI tinggi protein hewani seperti ikan, ayam, dan hati, dengan tekstur sesuai usia.',
+      address: 'Jl. Kemang Selatan No. 3, Jakarta Selatan',
+      phone: '081377788899',
+      open_hours: '09.00 - 18.00',
+    },
+    certificate: {
+      type: 'Sertifikat Halal & Produksi Pangan',
+      number: 'BPOM-MPASI-2023-009012',
+      issued_by: 'BPOM (Badan Pengawas Obat dan Makanan)',
+      issued_date: '2023-06-10',
+      expired_date: '2027-06-09',
+    },
+  },
+  {
+    email: 'admin@tinyspoon.id',
+    name: 'Admin TinySpoon',
+    role: 'ADMIN',
+    password: SEED_ADMIN_PASSWORD,
+  },
+]
+
+async function must(promise, label) {
+  const { data, error } = await promise
+  if (error) throw new Error(`${label}: ${error.message}`)
+  return data
+}
+
+async function findProfileId(email) {
+  const data = await must(
+    supabase.from('profiles').select('id').eq('email', email.toLowerCase()).maybeSingle(),
+    `Cari profil ${email}`
+  )
+  return data?.id ?? null
+}
+
+const shopIdByName = {}
+
+for (const account of accounts) {
+  let id = await findProfileId(account.email)
+
+  if (id) {
+    await must(
+      supabase.auth.admin.updateUserById(id, {
+        password: account.password,
+        email_confirm: true,
+      }),
+      `Perbarui ${account.email}`
+    )
+    console.log(`• ${account.email} sudah ada, password disamakan dengan .env`)
+  } else {
+    const { data, error } = await supabase.auth.admin.createUser({
+      email: account.email,
+      password: account.password,
+      email_confirm: true,
+      user_metadata: {
+        name: account.name,
+        role: account.role === 'SELLER' ? 'SELLER' : 'BUYER',
+        shop_name: account.shop?.name,
+      },
+    })
+    if (error) throw new Error(`Buat ${account.email}: ${error.message}`)
+    id = data.user.id
+    console.log(`✓ dibuat ${account.email} (${account.role})`)
+  }
+
+  if (account.role === 'ADMIN') {
+    await must(
+      supabase.from('profiles').update({ role: 'ADMIN' }).eq('id', id),
+      'Set peran admin'
+    )
+  }
+
+  if (account.role === 'SELLER') {
+    const { name: _shopName, ...shopFields } = account.shop
+    const shop = await must(
+      supabase
+        .from('shops')
+        .update({ ...shopFields, verification_status: 'APPROVED', rejection_reason: null })
+        .eq('owner_id', id)
+        .select('id')
+        .single(),
+      `Perbarui toko ${account.shop.name}`
+    )
+    shopIdByName[account.shop.name] = shop.id
+
+    const existing = await must(
+      supabase
+        .from('certificates')
+        .select('id')
+        .eq('shop_id', shop.id)
+        .eq('number', account.certificate.number),
+      'Cek sertifikat'
+    )
+    if (existing.length === 0) {
+      await must(
+        supabase.from('certificates').insert({
+          shop_id: shop.id,
+          type: account.certificate.type,
+          number: account.certificate.number,
+          issued_by: account.certificate.issued_by,
+          issued_date: account.certificate.issued_date,
+          expired_date: account.certificate.expired_date,
+          document_path: 'seed/sertifikat_contoh.pdf',
+          status: 'ACTIVE',
+          reviewed_at: new Date().toISOString(),
+        }),
+        'Isi sertifikat'
+      )
+    }
+  }
+}
+
+const products = [
+  { shop: 'Dapur Bunda', name: 'Bubur Ayam Sayuran', price: 25000, emoji: '🍚', age_group: 'M6_8', texture: 'HALUS', allergens: [], protein: 6, carbs: 18, fat: 3, fiber: 2 },
+  { shop: 'MPASI Sehat', name: 'Puree Wortel Kentang', price: 20000, emoji: '🥕', age_group: 'M6_8', texture: 'HALUS', allergens: ['SUSU'], protein: 2, carbs: 15, fat: 1, fiber: 3 },
+  { shop: 'Nutrisi Bayi', name: 'Tim Ikan Salmon', price: 35000, emoji: '🐟', age_group: 'M9_11', texture: 'LEMBUT', allergens: ['SEAFOOD'], protein: 12, carbs: 14, fat: 6, fiber: 1 },
+  { shop: 'Dapur Bunda', name: 'Nasi Lembek Ayam', price: 28000, emoji: '🍗', age_group: 'M9_11', texture: 'LEMBUT', allergens: ['TELUR'], protein: 9, carbs: 22, fat: 4, fiber: 1 },
+  { shop: 'MPASI Sehat', name: 'Bubur Kacang Hijau', price: 18000, emoji: '🌱', age_group: 'M6_8', texture: 'HALUS', allergens: ['KACANG'], protein: 5, carbs: 20, fat: 2, fiber: 6 },
+  { shop: 'Nutrisi Bayi', name: 'Sup Sayuran Mix', price: 22000, emoji: '🥦', age_group: 'M12_PLUS', texture: 'KASAR', allergens: ['GLUTEN'], protein: 4, carbs: 12, fat: 2, fiber: 5 },
+  { shop: 'Dapur Bunda', name: 'Nasi Tim Hati Ayam', price: 30000, emoji: '🍱', age_group: 'M9_11', texture: 'LEMBUT', allergens: ['TELUR'], protein: 10, carbs: 21, fat: 5, fiber: 1 },
+  { shop: 'MPASI Sehat', name: 'Puree Labu Kuning', price: 19000, emoji: '🎃', age_group: 'M6_8', texture: 'HALUS', allergens: ['SUSU'], protein: 1, carbs: 13, fat: 1, fiber: 3 },
+]
+
+for (const product of products) {
+  const { shop: shopName, ...fields } = product
+  const shopId = shopIdByName[shopName]
+
+  const existing = await must(
+    supabase
+      .from('products')
+      .select('id')
+      .eq('shop_id', shopId)
+      .eq('name', fields.name)
+      .is('deleted_at', null),
+    `Cek produk ${fields.name}`
+  )
+  if (existing.length === 0) {
+    await must(
+      supabase.from('products').insert({ shop_id: shopId, ...fields }),
+      `Isi produk ${fields.name}`
+    )
+    console.log(`✓ produk ${fields.name}`)
+  }
+}
+
+const sampleReviews = [
+  { author: 'Bunda Sari', baby_age: '7 bulan', date: '2024-09-20', comment: 'MPASI-nya enak banget! Anak saya langsung suka dan habis 1 porsi. Teksturnya juga pas untuk usia 7 bulan.' },
+  { author: 'Mama Rara', baby_age: '8 bulan', date: '2024-09-18', comment: 'Bahan-bahannya segar dan bergizi. Packaging juga rapi dan higienis. Recommended banget!' },
+  { author: 'Ibu Dewi', baby_age: '6 bulan', date: '2024-09-15', comment: 'Rasanya enak dan anak saya suka. Tapi pengirimannya agak lama, semoga bisa lebih cepat.' },
+  { author: 'Bunda Tika', baby_age: '9 bulan', date: '2024-09-10', comment: 'Udah berlangganan 3 bulan, selalu puas! Nutrisinya lengkap dan anak jadi lebih sehat.' },
+  { author: 'Mama Cici', baby_age: '7 bulan', date: '2024-09-05', comment: 'Produknya bagus dan terpercaya karena ada sertifikat BPOM-nya. Harga juga wajar.' },
+]
+
+// Jumlah ulasan bintang 5 dari 5 ulasan contoh (sisanya bintang 4)
+const fivesByProduct = {
+  'Bubur Ayam Sayuran': 4,
+  'Puree Wortel Kentang': 3,
+  'Tim Ikan Salmon': 5,
+  'Nasi Lembek Ayam': 4,
+  'Bubur Kacang Hijau': 3,
+  'Sup Sayuran Mix': 4,
+  'Nasi Tim Hati Ayam': 4,
+  'Puree Labu Kuning': 3,
+}
+
+const allProducts = await must(
+  supabase.from('products').select('id, name').is('deleted_at', null),
+  'Ambil produk'
+)
+
+for (const [productName, fives] of Object.entries(fivesByProduct)) {
+  const product = allProducts.find((p) => p.name === productName)
+  if (!product) continue
+
+  const existing = await must(
+    supabase.from('reviews').select('id').eq('product_id', product.id).is('user_id', null),
+    `Cek ulasan ${productName}`
+  )
+  if (existing.length > 0) continue
+
+  const rows = sampleReviews.map((review, index) => ({
+    product_id: product.id,
+    user_id: null,
+    author_name: review.author,
+    rating: index < fives ? 5 : 4,
+    comment: review.comment,
+    baby_age: review.baby_age,
+    created_at: review.date,
+  }))
+  await must(supabase.from('reviews').insert(rows), `Isi ulasan ${productName}`)
+  console.log(`✓ ulasan contoh ${productName}`)
+}
+
+console.log('\nSeed selesai.')

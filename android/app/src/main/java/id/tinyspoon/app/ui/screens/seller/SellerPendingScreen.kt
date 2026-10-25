@@ -33,6 +33,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.time.format.ResolverStyle
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 private val certTypeOptions = listOf(
     "SPP-IRT" to "Sertifikat Produksi Pangan Industri Rumah Tangga",
@@ -79,7 +80,7 @@ fun SellerPendingScreen(
     status: SellerStatus,
     rejectionReason: String?,
     certificate: SellerCertificate?,
-    onSubmitCertificate: (SellerCertificate) -> Unit,
+    onSubmitCertificate: suspend (SellerCertificate, Uri?) -> String?,
     onLogout: () -> Unit
 ) {
     val isRejected = status == SellerStatus.REJECTED
@@ -250,9 +251,10 @@ private fun CertificateForm(
     shopName: String,
     initial: SellerCertificate?,
     submitLabel: String,
-    onSubmit: (SellerCertificate) -> Unit
+    onSubmit: suspend (SellerCertificate, Uri?) -> String?
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var typeKey by remember {
         mutableStateOf(
@@ -264,20 +266,25 @@ private fun CertificateForm(
     var issuedBy by remember { mutableStateOf(initial?.issuedBy ?: "") }
     var issuedDate by remember { mutableStateOf(initial?.let { displayToInput(it.issuedDate) } ?: "") }
     var expiredDate by remember { mutableStateOf(initial?.let { displayToInput(it.expiredDate) } ?: "") }
-    var fileName by remember { mutableStateOf(initial?.documentName ?: "") }
+    var fileName by remember { mutableStateOf("") }
+    var pickedUri by remember { mutableStateOf<Uri?>(null) }
 
     var numberError by remember { mutableStateOf<String?>(null) }
     var issuerError by remember { mutableStateOf<String?>(null) }
     var issuedError by remember { mutableStateOf<String?>(null) }
     var expiredError by remember { mutableStateOf<String?>(null) }
     var fileError by remember { mutableStateOf<String?>(null) }
+    var formError by remember { mutableStateOf<String?>(null) }
+    var isSubmitting by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             val name = fileNameOf(context, uri)
             if (allowedExtensions.any { name.lowercase().endsWith(it) }) {
                 fileName = name
+                pickedUri = uri
                 fileError = null
+                formError = null
             } else {
                 fileError = "Format file harus PDF, JPG, atau PNG"
             }
@@ -319,7 +326,7 @@ private fun CertificateForm(
             ok = false
         }
 
-        if (fileName.isBlank()) {
+        if (pickedUri == null) {
             fileError = "Unggah dokumen sertifikat"
             ok = false
         }
@@ -403,7 +410,11 @@ private fun CertificateForm(
                 )
             }
 
-            Text(text = "Dokumen sertifikat", fontSize = 13.sp, color = TextSecondary)
+            Text(
+                text = "Dokumen sertifikat (PDF/JPG/PNG, maks. 5 MB)",
+                fontSize = 13.sp,
+                color = TextSecondary
+            )
 
             if (fileName.isNotBlank()) {
                 Box(
@@ -428,23 +439,9 @@ private fun CertificateForm(
                 border = androidx.compose.foundation.BorderStroke(1.dp, OrangePrimary)
             ) {
                 Text(
-                    text = if (fileName.isBlank()) "Pilih File (PDF/JPG/PNG)" else "Ganti File",
+                    text = if (fileName.isBlank()) "Pilih File" else "Ganti File",
                     color = OrangePrimary,
                     fontWeight = FontWeight.Bold
-                )
-            }
-
-            TextButton(
-                onClick = {
-                    fileName = "sertifikat_contoh.pdf"
-                    fileError = null
-                },
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            ) {
-                Text(
-                    text = "Gunakan file contoh (demo)",
-                    fontSize = 12.sp,
-                    color = TextSecondary
                 )
             }
 
@@ -457,25 +454,38 @@ private fun CertificateForm(
                 )
             }
 
+            if (formError != null) {
+                Text(
+                    text = formError!!,
+                    color = Color.Red,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+
             Button(
                 onClick = {
                     if (validate()) {
                         val issued = parseInputDate(issuedDate)!!
                         val expired = parseInputDate(expiredDate)!!
-                        onSubmit(
-                            SellerCertificate(
-                                sellerName = shopName,
-                                certNumber = certNumber.trim(),
-                                issuedBy = issuedBy.trim(),
-                                issuedDate = issued.format(displayDateFormat),
-                                expiredDate = expired.format(displayDateFormat),
-                                certType = certTypeOptions.first { it.first == typeKey }.second,
-                                status = CertStatus.PENDING,
-                                documentName = fileName
-                            )
+                        val cert = SellerCertificate(
+                            sellerName = shopName,
+                            certNumber = certNumber.trim(),
+                            issuedBy = issuedBy.trim(),
+                            issuedDate = issued.format(displayDateFormat),
+                            expiredDate = expired.format(displayDateFormat),
+                            certType = certTypeOptions.first { it.first == typeKey }.second,
+                            status = CertStatus.PENDING,
+                            documentName = fileName
                         )
+                        scope.launch {
+                            isSubmitting = true
+                            formError = onSubmit(cert, pickedUri)
+                            isSubmitting = false
+                        }
                     }
                 },
+                enabled = !isSubmitting,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -483,7 +493,7 @@ private fun CertificateForm(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = submitLabel,
+                    text = if (isSubmitting) "Mengunggah..." else submitLabel,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White

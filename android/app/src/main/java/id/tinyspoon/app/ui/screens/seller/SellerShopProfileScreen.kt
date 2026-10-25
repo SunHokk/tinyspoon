@@ -26,30 +26,6 @@ data class ShopProfile(
     val openHours: String
 )
 
-val dummyShops = mapOf(
-    "Dapur Bunda" to ShopProfile(
-        name = "Dapur Bunda",
-        description = "Dapur rumahan yang menyiapkan MPASI segar setiap hari tanpa pengawet, dimasak sesuai tahapan usia bayi.",
-        address = "Jl. Cipete Raya No. 25, Jakarta Selatan",
-        phone = "081234567890",
-        openHours = "07.00 - 17.00"
-    ),
-    "MPASI Sehat" to ShopProfile(
-        name = "MPASI Sehat",
-        description = "Spesialis puree dan bubur sayur-buah dengan bahan organik pilihan untuk si kecil.",
-        address = "Jl. Fatmawati No. 8, Jakarta Selatan",
-        phone = "081298765432",
-        openHours = "08.00 - 16.00"
-    ),
-    "Nutrisi Bayi" to ShopProfile(
-        name = "Nutrisi Bayi",
-        description = "MPASI tinggi protein hewani seperti ikan, ayam, dan hati, dengan tekstur sesuai usia.",
-        address = "Jl. Kemang Selatan No. 3, Jakarta Selatan",
-        phone = "081377788899",
-        openHours = "09.00 - 18.00"
-    )
-)
-
 @Composable
 fun SellerShopProfileScreen(
     shop: ShopProfile,

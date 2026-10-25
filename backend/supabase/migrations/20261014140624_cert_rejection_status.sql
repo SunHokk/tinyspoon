@@ -1,0 +1,1 @@
+alter type public.cert_status add value if not exists 'REJECTED';

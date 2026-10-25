@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import kotlinx.coroutines.launch
 import id.tinyspoon.app.ui.screens.cart.CartItem
 import id.tinyspoon.app.ui.theme.*
 import id.tinyspoon.app.ui.screens.home.CategoryChip
@@ -33,6 +34,7 @@ fun CheckoutScreen(
     cartItems: List<CartItem>,
     savedAddresses: List<SavedAddress>,
     onBack: () -> Unit,
+    onPlaceOrder: suspend (address: String, notes: String, paymentMethod: String) -> String?,
     onOrderSuccess: () -> Unit
 ) {
     var address by rememberSaveable { mutableStateOf(savedAddresses.firstOrNull { it.isDefault }?.asDeliveryText() ?: "") }
@@ -40,6 +42,9 @@ fun CheckoutScreen(
     var selectedPayment by rememberSaveable { mutableStateOf("Transfer Bank") }
     var showSuccessDialog by remember { mutableStateOf(false) }
     var addressError by remember { mutableStateOf<String?>(null) }
+    var orderError by remember { mutableStateOf<String?>(null) }
+    var isPlacing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val totalPrice = cartItems.sumOf { it.product.price * it.quantity }
     val sellerCount = cartItems.map { it.product.sellerName }.distinct().size.coerceAtLeast(1)
@@ -201,7 +206,7 @@ fun CheckoutScreen(
 
                 OutlinedTextField(
                     value = notes,
-                    onValueChange = { notes = it },
+                    onValueChange = { notes = it.take(200) },
                     placeholder = { Text("Catatan tambahan (opsional)...", fontSize = 14.sp) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -280,21 +285,36 @@ fun CheckoutScreen(
             }
         }
 
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White)
                 .navigationBarsPadding()
-                .padding(16.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            if (orderError != null) {
+                Text(
+                    text = orderError!!,
+                    color = Color.Red,
+                    fontSize = 12.sp
+                )
+            }
             Button(
                 onClick = {
-                    if (address.isBlank()) {
-                        addressError = "Alamat tidak boleh kosong"
+                    if (address.trim().length < 10) {
+                        addressError = "Alamat minimal 10 karakter"
                     } else {
-                        showSuccessDialog = true
+                        scope.launch {
+                            isPlacing = true
+                            orderError = null
+                            val error = onPlaceOrder(address.trim(), notes.trim(), selectedPayment)
+                            isPlacing = false
+                            if (error == null) showSuccessDialog = true else orderError = error
+                        }
                     }
                 },
+                enabled = !isPlacing,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -302,7 +322,7 @@ fun CheckoutScreen(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = "Buat Pesanan • Rp $grandTotal",
+                    text = if (isPlacing) "Memproses..." else "Buat Pesanan • Rp $grandTotal",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
