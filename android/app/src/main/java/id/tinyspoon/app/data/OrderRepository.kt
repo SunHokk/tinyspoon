@@ -98,7 +98,8 @@ object OrderRepository {
         items: List<CartItem>,
         address: String,
         notes: String,
-        paymentMethod: String
+        paymentMethod: String,
+        deliverySpeed: String
     ): PlaceOrderResult = try {
         val payload = buildJsonObject {
             put("p_items", buildJsonArray {
@@ -112,6 +113,7 @@ object OrderRepository {
             put("p_address", address)
             put("p_notes", notes)
             put("p_payment_method", paymentMethod)
+            put("p_delivery_speed", deliverySpeed)
         }
         val rows = SupabaseProvider.client.postgrest
             .rpc("place_order", payload)

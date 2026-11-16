@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import kotlinx.coroutines.launch
 import id.tinyspoon.app.ui.screens.cart.CartItem
 import id.tinyspoon.app.ui.theme.*
@@ -27,28 +29,40 @@ import id.tinyspoon.app.ui.screens.home.CategoryChip
 import id.tinyspoon.app.ui.screens.profile.SavedAddress
 import id.tinyspoon.app.ui.screens.profile.asDeliveryText
 
-const val DELIVERY_FEE_PER_SELLER = 10000
+enum class DeliverySpeed(
+    val code: String,
+    val label: String,
+    val eta: String,
+    val fee: Int,
+    val emoji: String
+) {
+    SAVER("SAVER", "Hemat", "45-60 menit", 8000, "🐢"),
+    REGULAR("REGULAR", "Reguler", "30-45 menit", 10000, "🛵"),
+    FAST("FAST", "Cepat", "15-30 menit", 15000, "⚡")
+}
 
 @Composable
 fun CheckoutScreen(
     cartItems: List<CartItem>,
     savedAddresses: List<SavedAddress>,
     onBack: () -> Unit,
-    onPlaceOrder: suspend (address: String, notes: String, paymentMethod: String) -> String?,
+    onPlaceOrder: suspend (address: String, notes: String, paymentMethod: String, deliverySpeed: String) -> String?,
     onOrderSuccess: () -> Unit
 ) {
     var address by rememberSaveable { mutableStateOf(savedAddresses.firstOrNull { it.isDefault }?.asDeliveryText() ?: "") }
     var notes by rememberSaveable { mutableStateOf("") }
     var selectedPayment by rememberSaveable { mutableStateOf("Transfer Bank") }
+    var selectedSpeedCode by rememberSaveable { mutableStateOf(DeliverySpeed.REGULAR.code) }
     var showSuccessDialog by remember { mutableStateOf(false) }
     var addressError by remember { mutableStateOf<String?>(null) }
     var orderError by remember { mutableStateOf<String?>(null) }
     var isPlacing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    val selectedSpeed = DeliverySpeed.entries.first { it.code == selectedSpeedCode }
     val totalPrice = cartItems.sumOf { it.product.price * it.quantity }
     val sellerCount = cartItems.map { it.product.sellerName }.distinct().size.coerceAtLeast(1)
-    val deliveryFee = DELIVERY_FEE_PER_SELLER * sellerCount
+    val deliveryFee = selectedSpeed.fee * sellerCount
     val grandTotal = totalPrice + deliveryFee
 
     val paymentMethods = listOf("Transfer Bank", "QRIS", "COD (Bayar di Tempat)")
@@ -215,6 +229,18 @@ fun CheckoutScreen(
                 )
             }
 
+            CheckoutSection(title = "Kecepatan Pengantaran") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DeliverySpeed.entries.forEach { speed ->
+                        DeliverySpeedOption(
+                            speed = speed,
+                            selected = speed.code == selectedSpeedCode,
+                            onClick = { selectedSpeedCode = speed.code }
+                        )
+                    }
+                }
+            }
+
             CheckoutSection(title = "Metode Pembayaran") {
                 paymentMethods.forEach { method ->
                     Row(
@@ -255,7 +281,7 @@ fun CheckoutScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        if (sellerCount > 1) "Ongkos kirim ($sellerCount seller)" else "Ongkos kirim",
+                        if (sellerCount > 1) "Ongkos kirim ($sellerCount seller)" else "Ongkos kirim (${selectedSpeed.label})",
                         fontSize = 14.sp,
                         color = TextSecondary
                     )
@@ -308,7 +334,7 @@ fun CheckoutScreen(
                         scope.launch {
                             isPlacing = true
                             orderError = null
-                            val error = onPlaceOrder(address.trim(), notes.trim(), selectedPayment)
+                            val error = onPlaceOrder(address.trim(), notes.trim(), selectedPayment, selectedSpeed.code)
                             isPlacing = false
                             if (error == null) showSuccessDialog = true else orderError = error
                         }
@@ -353,5 +379,49 @@ fun CheckoutSection(
             Spacer(modifier = Modifier.height(12.dp))
             content()
         }
+    }
+}
+
+@Composable
+private fun DeliverySpeedOption(
+    speed: DeliverySpeed,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) OrangePrimaryLight else Color.White)
+            .border(
+                width = 1.dp,
+                color = if (selected) OrangePrimary else BorderOrange,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable { onClick() }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = speed.emoji, fontSize = 24.sp)
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = speed.label,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+            Text(
+                text = "Estimasi ${speed.eta}",
+                fontSize = 12.sp,
+                color = TextSecondary
+            )
+        }
+        Text(
+            text = "Rp ${speed.fee}",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = OrangePrimary
+        )
     }
 }

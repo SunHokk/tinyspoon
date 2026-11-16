@@ -82,6 +82,7 @@ import id.tinyspoon.app.data.OrderRepository
 import id.tinyspoon.app.data.SellerRepository
 import id.tinyspoon.app.data.ProfileRepository
 import id.tinyspoon.app.ui.screens.profile.SavedAddress
+import id.tinyspoon.app.data.CartRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
@@ -149,6 +150,8 @@ fun AppNavigation() {
     var favoriteIds by remember { mutableStateOf(setOf<String>()) }
     var detailBackTo by remember { mutableStateOf(Screen.HOME) }
     var cartBackTo by remember { mutableStateOf(Screen.HOME) }
+    var checkoutItems by remember { mutableStateOf<List<CartItem>>(emptyList()) }
+    var favoritesBackTo by remember { mutableStateOf(Screen.PROFILE) }
     var addresses by remember { mutableStateOf<List<SavedAddress>>(emptyList()) }
     var myReviewCount by remember { mutableStateOf(0) }
     var adminAccounts by remember { mutableStateOf<List<UserAccount>>(emptyList()) }
@@ -247,6 +250,38 @@ fun AppNavigation() {
         }
     }
 
+    suspend fun loadCartNow() {
+        val rows = CartRepository.load() ?: return
+        val byId = products.filter { isSellerVisible(it.sellerName) }.associateBy { it.id }
+        cartItems = rows.mapNotNull { row ->
+            byId[row.productId]?.let { CartItem(it, row.quantity) }
+        }
+    }
+
+    fun saveCartQuantity(productId: String, quantity: Int) {
+        scope.launch {
+            if (!CartRepository.setQuantity(productId, quantity)) {
+                Toast.makeText(context, "Gagal menyimpan keranjang", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun addToCart(product: Product) {
+        val existing = cartItems.find { it.product.id == product.id }
+        val newQty = ((existing?.quantity ?: 0) + 1).coerceAtMost(50)
+        cartItems = if (existing != null) {
+            cartItems.map { if (it.product.id == product.id) it.copy(quantity = newQty) else it }
+        } else {
+            cartItems + CartItem(product, newQty)
+        }
+        saveCartQuantity(product.id, newQty)
+    }
+
+    fun removeFromCart(item: CartItem) {
+        cartItems = cartItems.filterNot { it.product.id == item.product.id }
+        scope.launch { CartRepository.remove(listOf(item.product.id)) }
+    }
+
     fun enterSession(session: SessionUser) {
         val user = session.account
         accounts = accounts.filterNot { it.id == user.id } + user
@@ -269,10 +304,13 @@ fun AppNavigation() {
                 else Screen.SELLER_PENDING
             UserRole.ADMIN -> Screen.ADMIN_DASHBOARD
         }
-        reloadCatalog()
         if (user.role == UserRole.BUYER) {
-            reloadOrders()
-            reloadProfileData()
+            scope.launch {
+                loadCatalogNow()
+                loadCartNow()
+            }
+        } else {
+            reloadCatalog()
         }
         if (user.role == UserRole.SELLER && user.sellerStatus == SellerStatus.APPROVED) reloadShopOrders()
         if (user.role == UserRole.ADMIN) reloadAdminData()
@@ -292,6 +330,7 @@ fun AppNavigation() {
         addresses = emptyList()
         favoriteIds = emptySet()
         currentScreen = Screen.AUTH
+        cartItems = emptyList()
     }
 
     val backTarget: Screen? = when (currentScreen) {
@@ -303,8 +342,9 @@ fun AppNavigation() {
         Screen.SELLER_CERTIFICATE, Screen.REVIEW -> Screen.PRODUCT_DETAIL
         Screen.ORDER_TRACKING -> trackingBackTo
         Screen.PROFILE -> Screen.HOME
-        Screen.ORDER_HISTORY, Screen.FAVORITES, Screen.ADDRESSES,
+        Screen.ORDER_HISTORY, Screen.ADDRESSES,
         Screen.NOTIFICATION_SETTINGS, Screen.ABOUT -> Screen.PROFILE
+        Screen.FAVORITES -> favoritesBackTo
         Screen.ADMIN_VERIFICATION, Screen.ADMIN_USERS -> Screen.ADMIN_DASHBOARD
         Screen.SELLER_PRODUCTS, Screen.SELLER_ORDERS, Screen.SELLER_SHOP -> Screen.SELLER_DASHBOARD
     }
@@ -349,9 +389,18 @@ fun AppNavigation() {
                 detailBackTo = Screen.HOME
                 currentScreen = Screen.PRODUCT_DETAIL
             },
+            onFavoritesClick = {
+                favoritesBackTo = Screen.HOME
+                currentScreen = Screen.FAVORITES
+            },
             onProfileClick = {
                 reloadProfileData()
                 currentScreen = Screen.PROFILE
+            },
+            cartCount = cartItems.size,
+            onCartClick = {
+                cartBackTo = Screen.HOME
+                currentScreen = Screen.CART
             }
         )
 
@@ -368,7 +417,10 @@ fun AppNavigation() {
                 reloadOrders()
                 currentScreen = Screen.ORDER_HISTORY
             },
-            onFavoritesClick = { currentScreen = Screen.FAVORITES },
+            onFavoritesClick = {
+                favoritesBackTo = Screen.PROFILE
+                currentScreen = Screen.FAVORITES
+            },
             onAddressesClick = { currentScreen = Screen.ADDRESSES },
             onNotificationsClick = { currentScreen = Screen.NOTIFICATION_SETTINGS },
             onAboutClick = { currentScreen = Screen.ABOUT },
@@ -443,7 +495,7 @@ fun AppNavigation() {
 
         Screen.FAVORITES -> FavoritesScreen(
             favorites = favoriteProducts,
-            onBack = { currentScreen = Screen.PROFILE },
+            onBack = { currentScreen = favoritesBackTo },
             onBrowseProducts = { currentScreen = Screen.HOME },
             onProductClick = { product ->
                 selectedProduct = product
@@ -460,15 +512,7 @@ fun AppNavigation() {
                 onToggleFavorite = { toggleFavorite(product.id) },
                 onBack = { currentScreen = detailBackTo },
                 onAddToCart = {
-                    val existingItem = cartItems.find { it.product.id == product.id }
-                    cartItems = if (existingItem != null) {
-                        cartItems.map {
-                            if (it.product.id == product.id) it.copy(quantity = (it.quantity + 1).coerceAtMost(50))
-                            else it
-                        }
-                    } else {
-                        cartItems + CartItem(product, 1)
-                    }
+                    addToCart(product)
                     cartBackTo = Screen.PRODUCT_DETAIL
                     currentScreen = Screen.CART
                 },
@@ -489,29 +533,31 @@ fun AppNavigation() {
             cartItems = cartItems,
             onBack = { currentScreen = cartBackTo },
             onBrowseProducts = { currentScreen = Screen.HOME },
-            onRemoveItem = { item ->
-                cartItems = cartItems - item
-            },
+            onRemoveItem = { item -> removeFromCart(item) },
             onQuantityChange = { item, newQty ->
                 cartItems = cartItems.map {
-                    if (it.product.id == item.product.id) it.copy(quantity = newQty)
-                    else it
+                    if (it.product.id == item.product.id) it.copy(quantity = newQty) else it
                 }
+                saveCartQuantity(item.product.id, newQty)
             },
-            onCheckout = {
+            onCheckout = { sellerName ->
+                checkoutItems = cartItems.filter { it.product.sellerName == sellerName }
                 currentScreen = Screen.CHECKOUT
             }
         )
 
         Screen.CHECKOUT -> CheckoutScreen(
-            cartItems = cartItems,
+            cartItems = checkoutItems,
             savedAddresses = addresses,
             onBack = { currentScreen = Screen.CART },
-            onPlaceOrder = { address, notes, payment ->
-                val result = OrderRepository.placeOrder(cartItems, address, notes, payment)
+            onPlaceOrder = { address, notes, payment, speed ->
+                val result = OrderRepository.placeOrder(checkoutItems, address, notes, payment, speed)
                 if (result.error != null) {
                     result.error
                 } else {
+                    val orderedIds = checkoutItems.map { it.product.id }
+                    cartItems = cartItems.filterNot { it.product.id in orderedIds }
+                    CartRepository.remove(orderedIds)
                     loadOrdersNow()
                     selectedOrderId = result.codes.firstOrNull()
                     null
@@ -519,7 +565,6 @@ fun AppNavigation() {
             },
             onOrderSuccess = {
                 trackingBackTo = Screen.HOME
-                cartItems = emptyList()
                 currentScreen = Screen.ORDER_TRACKING
             }
         )
@@ -552,6 +597,9 @@ fun AppNavigation() {
                     cartItems = updatedCart
                     cartBackTo = Screen.ORDER_HISTORY
                     currentScreen = Screen.CART
+                    scope.launch {
+                        CartRepository.saveAll(updatedCart.map { it.product.id to it.quantity })
+                    }
                 }
                 if (skipped > 0) {
                     val message = if (skipped == itemLines.size) {
