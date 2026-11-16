@@ -550,8 +550,8 @@ fun AppNavigation() {
             cartItems = checkoutItems,
             savedAddresses = addresses,
             onBack = { currentScreen = Screen.CART },
-            onPlaceOrder = { address, notes, payment ->
-                val result = OrderRepository.placeOrder(checkoutItems, address, notes, payment)
+            onPlaceOrder = { address, notes, payment, speed ->
+                val result = OrderRepository.placeOrder(checkoutItems, address, notes, payment, speed)
                 if (result.error != null) {
                     result.error
                 } else {
