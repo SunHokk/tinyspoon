@@ -19,6 +19,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import id.tinyspoon.app.ui.theme.*
 
 data class Product(
@@ -52,6 +55,7 @@ fun Product.matchesNutrition(option: String): Boolean = hasNutrition && when (op
     else -> true
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     products: List<Product>,
@@ -59,6 +63,7 @@ fun HomeScreen(
     errorMessage: String? = null,
     onRetry: () -> Unit = {},
     onProductClick: (Product) -> Unit,
+    onFavoritesClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -66,11 +71,13 @@ fun HomeScreen(
     var selectedTexture by remember { mutableStateOf("Semua") }
     var selectedNutrition by remember { mutableStateOf(setOf<String>()) }
     var excludedAllergens by remember { mutableStateOf(setOf<String>()) }
+    var showFilterSheet by remember { mutableStateOf(false) }
 
-    val isFilterActive = selectedCategory != "Semua" ||
-            selectedTexture != "Semua" ||
-            selectedNutrition.isNotEmpty() ||
-            excludedAllergens.isNotEmpty()
+    val activeFilterCount = (if (selectedCategory != "Semua") 1 else 0) +
+            (if (selectedTexture != "Semua") 1 else 0) +
+            selectedNutrition.size +
+            excludedAllergens.size
+    val isFilterActive = activeFilterCount > 0
 
     fun resetFilters() {
         selectedCategory = "Semua"
@@ -87,6 +94,23 @@ fun HomeScreen(
         val matchNutrition = selectedNutrition.all { product.matchesNutrition(it) }
         val matchAllergen = excludedAllergens.none { it in product.allergens }
         matchSearch && matchCategory && matchTexture && matchNutrition && matchAllergen
+    }
+
+    if (showFilterSheet) {
+        FilterSheet(
+            initialCategory = selectedCategory,
+            initialTexture = selectedTexture,
+            initialNutrition = selectedNutrition,
+            initialAllergens = excludedAllergens,
+            onApply = { category, texture, nutrition, allergens ->
+                selectedCategory = category
+                selectedTexture = texture
+                selectedNutrition = nutrition
+                excludedAllergens = allergens
+                showFilterSheet = false
+            },
+            onDismiss = { showFilterSheet = false }
+        )
     }
 
     LazyColumn(
@@ -121,36 +145,122 @@ fun HomeScreen(
                                 color = Color.White
                             )
                         }
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                                .clickable { onProfileClick() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(text = "👤", fontSize = 20.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White.copy(alpha = 0.2f))
+                                    .clickable { onFavoritesClick() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = "❤️", fontSize = 20.sp)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White.copy(alpha = 0.2f))
+                                    .clickable { onProfileClick() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = "👤", fontSize = 20.sp)
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("Cari MPASI...", fontSize = 14.sp) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            unfocusedContainerColor = Color.White,
-                            focusedContainerColor = Color.White,
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = Color.Transparent,
-                            cursorColor = OrangePrimary
-                        ),
-                        singleLine = true
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Cari MPASI...", fontSize = 14.sp) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                unfocusedContainerColor = Color.White,
+                                focusedContainerColor = Color.White,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedBorderColor = Color.Transparent,
+                                cursorColor = OrangePrimary
+                            ),
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Row(
+                            modifier = Modifier
+                                .height(56.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White)
+                                .clickable { showFilterSheet = true }
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Filter",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = OrangePrimary
+                            )
+                            if (isFilterActive) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .background(OrangePrimary, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "$activeFilterCount",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (isFilterActive) {
+            item {
+                LazyRow(
+                    modifier = Modifier.padding(top = 12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (selectedCategory != "Semua") {
+                        item { ActiveFilterChip(selectedCategory) { selectedCategory = "Semua" } }
+                    }
+                    if (selectedTexture != "Semua") {
+                        item { ActiveFilterChip(selectedTexture) { selectedTexture = "Semua" } }
+                    }
+                    items(selectedNutrition.toList()) { option ->
+                        ActiveFilterChip(option) { selectedNutrition = selectedNutrition - option }
+                    }
+                    items(excludedAllergens.toList()) { allergen ->
+                        ActiveFilterChip("Tanpa $allergen") {
+                            excludedAllergens = excludedAllergens - allergen
+                        }
+                    }
+                    item {
+                        Text(
+                            text = "Reset",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = OrangePrimary,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { resetFilters() }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
         }
@@ -191,117 +301,6 @@ fun HomeScreen(
         }
 
         item {
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Kategori Usia",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    if (isFilterActive) {
-                        Text(
-                            text = "Reset",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = OrangePrimary,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { resetFilters() }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(ageCategories) { category ->
-                        CategoryChip(
-                            text = category,
-                            isSelected = selectedCategory == category,
-                            onClick = { selectedCategory = category }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Tekstur",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(textureCategories) { texture ->
-                        CategoryChip(
-                            text = texture,
-                            isSelected = selectedTexture == texture,
-                            onClick = { selectedTexture = texture }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Kandungan Gizi",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(nutritionOptions) { option ->
-                        val isSelected = option in selectedNutrition
-                        CategoryChip(
-                            text = option,
-                            isSelected = isSelected,
-                            onClick = {
-                                selectedNutrition = if (isSelected) {
-                                    selectedNutrition - option
-                                } else {
-                                    selectedNutrition + option
-                                }
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Bebas Alergen",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(allergenOptions) { allergen ->
-                        val isSelected = allergen in excludedAllergens
-                        CategoryChip(
-                            text = "Tanpa $allergen",
-                            isSelected = isSelected,
-                            onClick = {
-                                excludedAllergens = if (isSelected) {
-                                    excludedAllergens - allergen
-                                } else {
-                                    excludedAllergens + allergen
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        item {
             Text(
                 text = if (isFilterActive || searchQuery.isNotBlank())
                     "Hasil (${filteredProducts.size})"
@@ -338,6 +337,160 @@ fun HomeScreen(
         }
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+fun ActiveFilterChip(text: String, onRemove: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(OrangePrimary)
+            .clickable { onRemove() }
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(text = "✕", fontSize = 11.sp, color = Color.White)
+    }
+}
+
+@Composable
+private fun FilterSectionTitle(text: String) {
+    Text(
+        text = text,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Bold,
+        color = TextPrimary,
+        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun FilterSheet(
+    initialCategory: String,
+    initialTexture: String,
+    initialNutrition: Set<String>,
+    initialAllergens: Set<String>,
+    onApply: (String, String, Set<String>, Set<String>) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var category by remember { mutableStateOf(initialCategory) }
+    var texture by remember { mutableStateOf(initialTexture) }
+    var nutrition by remember { mutableStateOf(initialNutrition) }
+    var allergens by remember { mutableStateOf(initialAllergens) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = BackgroundCream
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .navigationBarsPadding()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Filter",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "Reset",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = OrangePrimary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable {
+                            category = "Semua"
+                            texture = "Semua"
+                            nutrition = emptySet()
+                            allergens = emptySet()
+                        }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+
+            FilterSectionTitle("Kategori Usia")
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ageCategories.forEach { item ->
+                    CategoryChip(item, category == item) { category = item }
+                }
+            }
+
+            FilterSectionTitle("Tekstur")
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                textureCategories.forEach { item ->
+                    CategoryChip(item, texture == item) { texture = item }
+                }
+            }
+
+            FilterSectionTitle("Kandungan Gizi")
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                nutritionOptions.forEach { option ->
+                    val selected = option in nutrition
+                    CategoryChip(option, selected) {
+                        nutrition = if (selected) nutrition - option else nutrition + option
+                    }
+                }
+            }
+
+            FilterSectionTitle("Bebas Alergen")
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                allergenOptions.forEach { allergen ->
+                    val selected = allergen in allergens
+                    CategoryChip("Tanpa $allergen", selected) {
+                        allergens = if (selected) allergens - allergen else allergens + allergen
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = { onApply(category, texture, nutrition, allergens) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+            ) {
+                Text(
+                    text = "Terapkan",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
     }
 }
 

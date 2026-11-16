@@ -149,6 +149,7 @@ fun AppNavigation() {
     var favoriteIds by remember { mutableStateOf(setOf<String>()) }
     var detailBackTo by remember { mutableStateOf(Screen.HOME) }
     var cartBackTo by remember { mutableStateOf(Screen.HOME) }
+    var favoritesBackTo by remember { mutableStateOf(Screen.PROFILE) }
     var addresses by remember { mutableStateOf<List<SavedAddress>>(emptyList()) }
     var myReviewCount by remember { mutableStateOf(0) }
     var adminAccounts by remember { mutableStateOf<List<UserAccount>>(emptyList()) }
@@ -303,8 +304,9 @@ fun AppNavigation() {
         Screen.SELLER_CERTIFICATE, Screen.REVIEW -> Screen.PRODUCT_DETAIL
         Screen.ORDER_TRACKING -> trackingBackTo
         Screen.PROFILE -> Screen.HOME
-        Screen.ORDER_HISTORY, Screen.FAVORITES, Screen.ADDRESSES,
+        Screen.ORDER_HISTORY, Screen.ADDRESSES,
         Screen.NOTIFICATION_SETTINGS, Screen.ABOUT -> Screen.PROFILE
+        Screen.FAVORITES -> favoritesBackTo
         Screen.ADMIN_VERIFICATION, Screen.ADMIN_USERS -> Screen.ADMIN_DASHBOARD
         Screen.SELLER_PRODUCTS, Screen.SELLER_ORDERS, Screen.SELLER_SHOP -> Screen.SELLER_DASHBOARD
     }
@@ -349,6 +351,10 @@ fun AppNavigation() {
                 detailBackTo = Screen.HOME
                 currentScreen = Screen.PRODUCT_DETAIL
             },
+            onFavoritesClick = {
+                favoritesBackTo = Screen.HOME
+                currentScreen = Screen.FAVORITES
+            },
             onProfileClick = {
                 reloadProfileData()
                 currentScreen = Screen.PROFILE
@@ -368,7 +374,10 @@ fun AppNavigation() {
                 reloadOrders()
                 currentScreen = Screen.ORDER_HISTORY
             },
-            onFavoritesClick = { currentScreen = Screen.FAVORITES },
+            onFavoritesClick = {
+                favoritesBackTo = Screen.PROFILE
+                currentScreen = Screen.FAVORITES
+            },
             onAddressesClick = { currentScreen = Screen.ADDRESSES },
             onNotificationsClick = { currentScreen = Screen.NOTIFICATION_SETTINGS },
             onAboutClick = { currentScreen = Screen.ABOUT },
@@ -443,7 +452,7 @@ fun AppNavigation() {
 
         Screen.FAVORITES -> FavoritesScreen(
             favorites = favoriteProducts,
-            onBack = { currentScreen = Screen.PROFILE },
+            onBack = { currentScreen = favoritesBackTo },
             onBrowseProducts = { currentScreen = Screen.HOME },
             onProductClick = { product ->
                 selectedProduct = product
