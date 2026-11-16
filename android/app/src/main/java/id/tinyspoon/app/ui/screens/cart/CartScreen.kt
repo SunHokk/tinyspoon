@@ -32,9 +32,9 @@ fun CartScreen(
     onBrowseProducts: () -> Unit,
     onRemoveItem: (CartItem) -> Unit,
     onQuantityChange: (CartItem, Int) -> Unit,
-    onCheckout: () -> Unit
+    onCheckout: (String) -> Unit
 ) {
-    val totalPrice = cartItems.sumOf { it.product.price * it.quantity }
+    val groups = cartItems.groupBy { it.product.sellerName }.toList()
 
     Column(
         modifier = Modifier
@@ -106,61 +106,88 @@ fun CartScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                items(cartItems) { item ->
-                    CartItemCard(
-                        item = item,
-                        onRemove = { onRemoveItem(item) },
-                        onQuantityChange = { newQty -> onQuantityChange(item, newQty) }
+                item {
+                    Text(
+                        text = "Checkout dilakukan per penjual. Makanan dari penjual lain tetap tersimpan di keranjang.",
+                        fontSize = 12.sp,
+                        color = TextSecondary
                     )
                 }
+                items(groups, key = { it.first }) { (sellerName, sellerItems) ->
+                    CartSellerGroup(
+                        sellerName = sellerName,
+                        items = sellerItems,
+                        onRemoveItem = onRemoveItem,
+                        onQuantityChange = onQuantityChange,
+                        onCheckout = { onCheckout(sellerName) }
+                    )
+                }
+                item { Spacer(modifier = Modifier.navigationBarsPadding()) }
             }
+        }
+    }
+}
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .navigationBarsPadding()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Total Pembayaran",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "Rp $totalPrice",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = OrangePrimary
-                    )
-                }
+@Composable
+fun CartSellerGroup(
+    sellerName: String,
+    items: List<CartItem>,
+    onRemoveItem: (CartItem) -> Unit,
+    onQuantityChange: (CartItem, Int) -> Unit,
+    onCheckout: () -> Unit
+) {
+    val subtotal = items.sumOf { it.product.price * it.quantity }
 
-                Button(
-                    onClick = onCheckout,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = "Checkout (${cartItems.size} item)",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
-            }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "🏪 $sellerName",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+        items.forEach { item ->
+            CartItemCard(
+                item = item,
+                onRemove = { onRemoveItem(item) },
+                onQuantityChange = { newQty -> onQuantityChange(item, newQty) }
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Subtotal (${items.size} item)",
+                fontSize = 14.sp,
+                color = TextSecondary
+            )
+            Text(
+                text = "Rp $subtotal",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = OrangePrimary
+            )
+        }
+        Button(
+            onClick = onCheckout,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = "Checkout $sellerName",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
         }
     }
 }

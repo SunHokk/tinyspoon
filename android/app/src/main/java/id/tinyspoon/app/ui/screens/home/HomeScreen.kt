@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.shadow
 import id.tinyspoon.app.ui.theme.*
 
 data class Product(
@@ -64,7 +65,9 @@ fun HomeScreen(
     onRetry: () -> Unit = {},
     onProductClick: (Product) -> Unit,
     onFavoritesClick: () -> Unit,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    cartCount: Int = 0,
+    onCartClick: () -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Semua") }
@@ -113,11 +116,12 @@ fun HomeScreen(
         )
     }
 
-    LazyColumn(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundCream)
     ) {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             Box(
                 modifier = Modifier
@@ -336,7 +340,49 @@ fun HomeScreen(
             }
         }
 
-        item { Spacer(modifier = Modifier.height(16.dp)) }
+            item { Spacer(modifier = Modifier.height(96.dp)) }
+        }
+
+        CartFab(count = cartCount, onClick = onCartClick)
+    }
+}
+@Composable
+fun BoxScope.CartFab(count: Int, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .navigationBarsPadding()
+            .padding(end = 16.dp, bottom = 48.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .shadow(6.dp, CircleShape)
+                .background(OrangePrimary, CircleShape)
+                .clip(CircleShape)
+                .clickable { onClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = "🛒", fontSize = 24.sp)
+        }
+        if (count > 0) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 4.dp, y = (-4).dp)
+                    .defaultMinSize(minWidth = 20.dp, minHeight = 20.dp)
+                    .background(Color(0xFFE53935), CircleShape)
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (count > 99) "99+" else "$count",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
     }
 }
 
